@@ -4,7 +4,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const slug=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const colors={avaria:'#d94b46',visitado:'#1a9a72',fotos:'#2589ce',contactado:'#edb247',pendente:'#929e9c','sen-tractor':'#929e9c','so-apero':'#8166b5','non-localizado':'#d6a133'};
 const labels={avaria:'Avaría detectada',visitado:'Visita presencial',fotos:'Fotos sen visita',contactado:'Contactado',pendente:'Pendente','sen-tractor':'Sen tractor asignado','so-apero':'Só apero','non-localizado':'Visitado · tractor sen localizar'};
-let client=null,group='',rows=new Map(),currentId='',map=null,layer=null,mapFeatures=null,refreshTimer=null,busy=false,dirty=false;
+let client=null,group='',rows=new Map(),currentId='',map=null,layer=null,provinceLayer=null,mapFeatures=null,provinceFeatures=null,refreshTimer=null,busy=false,dirty=false;
 let conn=JSON.parse(localStorage.getItem('cb-config')||'{}'); $('url').value=conn.url||'https://kibwuguhptwrogcxjbxn.supabase.co';$('key').value=conn.key||'';
 function toast(msg,error=false){let t=$('toast');t.textContent=msg;t.style.background=error?'#972e37':'#193a30';t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),4900)}
 function notice(s){$('notice').textContent=s;$('notice').classList.toggle('hidden',!s)}
@@ -43,9 +43,40 @@ function kpis(){let a=all(),nvisit=a.filter(r=>inspectState(r).visit==='visitado
 
 function matchFilter(r){let q=slug($('search').value);let ok=!q||slug([r.name,r.prov,r.empresa,...(r.machines||[]).map(m=>[m.matricula,m.marca,m.modelo]),r.notaSeaga].join(' ')).includes(q);return ok&&(!$('province').value||r.prov===$('province').value)&&(!$('filter').value||inspectState(r).state===$('filter').value)}
 function renderList(){let a=all().filter(matchFilter);$('list').innerHTML=a.map(r=>`<button class="item ${r.id===currentId?'active':''}" data-id="${safe(r.id)}" style="border-left-color:${colors[inspectState(r).state]}"><span><strong>${safe(r.name)}</strong><br><small class="muted">${safe(r.prov)} · ${tractorCount(r)} tractor(es)${isCrecente(r)?' · só apero':isNegreira(r)?' · tractor non localizado':''}</small></span><span class="pill">${labels[inspectState(r).state]}</span></button>`).join('')||'<div class="pad muted">Sen resultados</div>';$('list').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>openRecord(b.dataset.id)))}
-function renderMap(){if(!map||!mapFeatures)return;if(layer)layer.remove();const byName=new Map(all().map(r=>[slug(r.name),r]));layer=L.geoJSON(mapFeatures,{style:f=>{const r=lookupFeature(f,byName);return {color:'#fff',weight:.7,fillColor:r?colors[inspectState(r).state]:'#dce5df',fillOpacity:.84}},onEachFeature:(f,l)=>{const r=lookupFeature(f,byName);l.bindTooltip(safe(r?.name||f.properties?.name||'Concello'),{sticky:true});if(r)l.on('click',()=>openRecord(r.id))}}).addTo(map)}
+function renderMap(){
+ if(!map||!mapFeatures)return;
+ if(layer)layer.remove();
+ if(provinceLayer)provinceLayer.remove();
+ const byName=new Map(all().map(r=>[slug(r.name),r]));
+ layer=L.geoJSON(mapFeatures,{style:f=>{const r=lookupFeature(f,byName);return {color:'#fff',weight:.7,fillColor:r?colors[inspectState(r).state]:'#dce5df',fillOpacity:.84}},onEachFeature:(f,l)=>{const r=lookupFeature(f,byName);l.bindTooltip(safe(r?.name||f.properties?.name||'Concello'),{sticky:true});if(r)l.on('click',()=>openRecord(r.id))}}).addTo(map);
+ if(provinceFeatures&&provinceFeatures.length){
+  provinceLayer=L.geoJSON(provinceFeatures,{interactive:false,style:{color:'#45635a',weight:3.1,opacity:.95,fill:false}}).addTo(map);
+  provinceLayer.bringToFront();
+ }
+}
 function lookupFeature(f,names){let n=[f.properties?.name,f.properties?.NAME,f.properties?.nombre,f.properties?.municipality].filter(Boolean);for(let x of n){let m=names.get(slug(x));if(m)return m;}return null}
-async function initMap(){map=L.map('map',{zoomControl:true}).setView([42.78,-7.85],8);/* Mapa vectorial sen teselas externas: non require ningunha API key. */$('legend').innerHTML=Object.keys(labels).map(k=>`<span><i class="mark" style="background:${colors[k]}"></i>${labels[k]}</span>`).join('');try{let resp=await fetch('https://unpkg.com/es-atlas/es/municipalities.json');if(!resp.ok)throw Error('HTTP '+resp.status);let topo=await resp.json(),feats=topojson.feature(topo,topo.objects.municipalities).features;mapFeatures=feats.filter(f=>/^(15|27|32|36)/.test(String(f.id??f.properties?.id??'')));if(!mapFeatures.length)throw Error('Non se atoparon os límites de Galicia');renderMap();map.fitBounds(layer.getBounds(),{padding:[12,12]});$('mapHint').textContent='Galicia · límites municipais';}catch(e){console.error(e);$('mapHint').textContent='Non se puideron cargar os límites; a lista funciona';}}
+async function initMap(){
+ map=L.map('map',{zoomControl:true}).setView([42.78,-7.85],8);
+ /* Mapa vectorial sen teselas externas: non require ningunha API key. */
+ $('legend').innerHTML=Object.keys(labels).map(k=>`<span><i class="mark" style="background:${colors[k]}"></i>${labels[k]}</span>`).join('');
+ try{
+  const [respMun,respProv]=await Promise.all([
+   fetch('https://unpkg.com/es-atlas/es/municipalities.json'),
+   fetch('https://unpkg.com/es-atlas/es/provinces.json')
+  ]);
+  if(!respMun.ok)throw Error('HTTP '+respMun.status);
+  let topo=await respMun.json(),feats=topojson.feature(topo,topo.objects.municipalities).features;
+  mapFeatures=feats.filter(f=>/^(15|27|32|36)/.test(String(f.id??f.properties?.id??'')));
+  if(respProv.ok){
+   let topoProv=await respProv.json(),provFeats=topojson.feature(topoProv,topoProv.objects.provinces).features;
+   provinceFeatures=provFeats.filter(f=>/^(15|27|32|36)/.test(String(f.id??f.properties?.id??'')));
+  } else provinceFeatures=[];
+  if(!mapFeatures.length)throw Error('Non se atoparon os límites de Galicia');
+  renderMap();
+  map.fitBounds(layer.getBounds(),{padding:[12,12]});
+  $('mapHint').textContent='Galicia · límites municipais e provinciais';
+ }catch(e){console.error(e);$('mapHint').textContent='Non se puideron cargar os límites; a lista funciona';}
+}
 function render(){kpis();renderList();renderMap();if(currentId)renderDetail()}
 function labelRow(k,v){return `<p><strong>${safe(k)}:</strong> ${safe(v??'—')}</p>`}
 function editButton(action,title){return `<button class="btn" data-action="${action}">${title}</button>`}
