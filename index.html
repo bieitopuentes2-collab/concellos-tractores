@@ -1,6 +1,157 @@
-<!doctype html><html lang="gl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#123b32"><title>App Concellos Bieito</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><style>
-:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#18342e;background:#f2f5f3}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #77c6b0}header{background:linear-gradient(115deg,#0e382f,#1b6454);padding:20px 4vw;color:white;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}h1{margin:0;font-size:23px;letter-spacing:-.5px}header small{opacity:.75}main{max-width:1600px;margin:auto;padding:20px 3vw}.headerActions,.flex{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.btn{background:#fff;color:#175045;border:1px solid #cadbd4;border-radius:10px;padding:10px 13px;font-weight:650;font-size:13px}.btn.primary{background:#146f59;color:#fff;border-color:#146f59}.btn.danger{color:#a02d30}.btn.transparent{background:#ffffff1b;border-color:#ffffff70;color:#fff}.panel{border:1px solid #dae7e0;border-radius:15px;background:#fff;overflow:hidden}.pad{padding:17px}.muted{color:#687b72;font-size:13px}.kpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-bottom:16px}.kpi{background:white;padding:16px;border:1px solid #dfe9e4;border-radius:13px}.kpi b{display:block;font-size:25px}.kpi span{font-size:12px;color:#62776b}.layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(340px,.95fr);gap:16px}.topline{padding:14px 17px;border-bottom:1px solid #e5ece8;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}h2{font-size:16px;margin:0}h3{font-size:15px;margin:18px 0 9px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px;font-size:12px;color:#5e7167}.field input,.field select,.field textarea,.search input,.search select{width:100%;border-radius:9px;border:1px solid #cedbd3;padding:10px;color:#203b31;background:white}.field textarea{min-height:72px;resize:vertical}.wide{grid-column:1/-1}#map{height:520px;background:#e7efe9}#list{max-height:430px;overflow:auto}.item{padding:10px 13px;border-bottom:1px solid #ecf0ee;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;width:100%;background:white;border-left:4px solid transparent}.item:hover,.item.active{background:#eef8f3}.pill{font-size:11px;padding:5px 8px;border-radius:30px;background:#e8efeb;white-space:nowrap}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;padding:12px 16px}.mark{height:10px;width:10px;display:inline-block;border-radius:3px;margin-right:4px}.search{display:flex;gap:8px;padding:12px;flex-wrap:wrap}.search input{flex:1;min-width:150px}.search select{width:auto}.record-scroll{max-height:calc(100vh - 135px);overflow-y:auto;min-height:560px}.block{border-top:1px solid #e9efea;padding-top:8px;margin-top:16px}.entry{background:#f5f8f6;border:1px solid #e4ebe6;border-radius:10px;padding:10px 12px;margin:7px 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.entry .mini{font-size:11px;color:#6c7c73}.hidden{display:none!important}.notice{padding:12px 16px;background:#fff4db;color:#765313;border:1px solid #f3dfb2;border-radius:10px;font-size:13px;margin-bottom:14px}.good{color:#12654f}.bad{color:#af3434}#login{max-width:460px;margin:52px auto;padding:26px}.loginTitle{font-size:23px;font-weight:750;margin-bottom:8px}.overlay{position:fixed;inset:0;z-index:9999;background:#0b211b88;display:flex;align-items:center;justify-content:center;padding:18px}.modal{background:white;border-radius:15px;max-width:550px;width:100%;max-height:90vh;overflow:auto;padding:22px}.photo{display:flex;gap:12px;align-items:center;margin:9px 0;border-bottom:1px solid #e9eeeb;padding-bottom:9px}.photo img{width:75px;height:65px;object-fit:cover;border-radius:8px;background:#e7edea}.toast{position:fixed;bottom:16px;right:15px;background:#193a30;color:#fff;border-radius:12px;padding:12px 16px;z-index:20000;max-width:90vw;box-shadow:0 9px 25px #10271b33}.tiny{font-size:11px}.viewtabs{display:flex;gap:8px;padding:10px 0}.viewtabs button.active{background:#175b4e;color:white}.filebox{border:1px dashed #aacbbd;border-radius:12px;padding:14px;background:#f8fbf9}.nowrap{white-space:nowrap}a{color:#126851}@media(max-width:1150px){.kpis{grid-template-columns:repeat(3,1fr)}.layout{grid-template-columns:1fr}.record-scroll{max-height:none}}@media(max-width:600px){header{padding:16px}main{padding:12px}.kpis{grid-template-columns:repeat(2,1fr)}#map{height:390px}.fields{grid-template-columns:1fr}.wide{grid-column:auto}.search select{width:100%}}
-</style></head><body><header><div><h1>◈ Concellos <span style="font-weight:400">· Bieito</span></h1><small>Control de maquinaria · visitas e documentación</small></div><div class="headerActions"><span id="syncLabel" style="font-size:12px">Sen conectar</span><button class="btn transparent hidden" id="exportBtn">Exportar Excel</button><button class="btn transparent hidden" id="refreshBtn">↻ Actualizar</button><button class="btn transparent hidden" id="logoutBtn">Saír</button></div></header>
-<main><section id="login" class="panel"><div class="loginTitle">Acceso ao panel</div><p class="muted">Os datos gárdanse nunha base privada compartida. Usa o acceso autorizado en Supabase.</p><div class="fields"><label class="field wide">URL do proxecto Supabase<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="off"></label><label class="field wide">Clave pública (sb_publishable_...)<input id="key" autocomplete="off" type="password"></label><label class="field wide">Correo de acceso<input id="email" type="email" autocomplete="username"></label><label class="field wide">Contrasinal<input id="password" type="password" autocomplete="current-password"></label></div><p><button id="loginBtn" class="btn primary">Entrar na aplicación</button></p><p id="loginError" class="bad tiny"></p><p class="muted">A URL e a clave pública quedan gardadas neste navegador; o contrasinal non se garda nesta aplicación. Non uses claves secretas ou service_role.</p></section>
-<section id="app" class="hidden"><div id="notice" class="notice hidden"></div><div class="kpis" id="kpis"></div><div class="layout"><section class="panel"><div class="topline"><h2>Mapa de concellos</h2><span class="muted" id="mapHint">Selecciona un concello</span></div><div id="map"></div><div id="legend" class="legend"></div><div class="search"><input id="search" type="search" placeholder="Buscar concello, empresa, matrícula…" aria-label="Buscar concello"><select id="province"><option value="">Todas as provincias</option><option>A CORUÑA</option><option>LUGO</option><option>OURENSE</option><option>PONTEVEDRA</option></select><select id="filter"><option value="">Todos os estados</option><option value="avaria">Avaría</option><option value="visitado">Visitado</option><option value="fotos">Fotos recibidas</option><option value="contactado">Contactado</option><option value="pendente">Pendente</option><option value="sen-tractor">Sen tractor na relación</option><option value="so-apero">Só apero</option><option value="non-localizado">Tractor non localizado</option></select></div><div id="list"></div></section><section class="panel"><div class="topline"><h2 id="detailTitle">Ficha do concello</h2><span id="statusTag" class="pill">Selecciona no mapa</span></div><div id="detail" class="pad record-scroll"><p class="muted">Selecciona un concello para consultar os seus tractores, visitas, observacións e fotografías.</p></div></section></div></section></main><div id="modalRoot"></div><div id="toast" class="toast hidden"></div>
+<!doctype html><html lang="gl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123b32">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Concellos Bieito"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Concellos Bieito</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{--ink:#18342e;--muted:#64776e;--line:#dce6e0;--bg:#eef2f0;--panel:#fff;--brand:#123b32;--brand2:#146f59;--accent:#ffd400;--hdr:52px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{background:var(--bg);overscroll-behavior:none}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #77c6b0;outline-offset:1px}
+a{color:#126851}.hidden{display:none!important}.muted{color:var(--muted);font-size:13px}.tiny{font-size:11px}.good{color:#12654f}.bad{color:#af3434}.nowrap{white-space:nowrap}.pad{padding:16px}
+/* Cabeceira */
+header{height:calc(var(--hdr) + var(--sat));padding:var(--sat) 14px 0;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:1200}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}.brand img{width:30px;height:30px;border-radius:7px}.brand b{font-size:17px;letter-spacing:-.3px;white-space:nowrap}.brand small{opacity:.7;font-size:12px;white-space:nowrap}
+.headerActions{display:flex;gap:6px;align-items:center}
+.sync{font-size:12px;padding:5px 9px;border-radius:20px;background:#ffffff1c;white-space:nowrap}.sync::before{content:'●';margin-right:5px}
+.sync.ok::before{color:#58d6a6}.sync.saving::before,.sync.loading::before{color:#9ed0ff}.sync.dirty{background:#f2b53333}.sync.dirty::before{color:#ffcf4d}.sync.error{background:#d94b4644}.sync.error::before,.sync.offline::before{color:#ff8a80}.sync.idle::before{color:#b8c4bf}
+/* Botóns */
+.btn{background:#fff;color:#175045;border:1px solid #c7d9d0;border-radius:10px;padding:9px 13px;font-weight:650;font-size:13px;min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.btn.primary{background:var(--brand2);color:#fff;border-color:var(--brand2)}.btn.danger{color:#a02d30}.btn.ghost{background:#ffffff14;border-color:#ffffff55;color:#fff}.btn.icon{padding:8px 10px}
+.btn.big{min-height:48px;font-size:14px;border-radius:12px;flex:1}.btn.pulse{box-shadow:0 0 0 3px #ffcf4d}
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* Login */
+#login{max-width:440px;margin:6vh auto;padding:24px;background:#fff;border:1px solid var(--line);border-radius:16px}.loginTitle{font-size:22px;font-weight:750;margin-bottom:6px}
+/* Formularios */
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px;font-size:12px;color:#5e7167}.wide{grid-column:1/-1}
+.field input,.field select,.field textarea,.side input,.side select,#mapSearch{width:100%;border-radius:9px;border:1px solid #cedbd3;padding:10px;color:#203b31;background:#fff}
+.field textarea{min-height:76px;resize:vertical}.gpsbtn{justify-self:start;margin-top:2px;min-height:32px;padding:5px 10px;font-size:12px}
+/* Disposición escritorio */
+#app{display:grid;grid-template-columns:330px minmax(0,1fr) 450px;height:calc(100dvh - var(--hdr) - var(--sat));min-height:0}
+#app.hidden{display:none!important}
+.side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side .sideHead{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:8px}.side .sideHead .row{display:flex;gap:6px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.kpi{background:#f5f8f6;padding:8px;border:1px solid #e3ebe6;border-radius:10px}.kpi b{display:block;font-size:19px}.kpi span{font-size:10.5px;color:#62776b;line-height:1.2;display:block}
+#list{overflow:auto;flex:1;min-height:0}
+.item{padding:10px 12px;border:0;border-bottom:1px solid #ecf0ee;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;background:#fff;border-left:5px solid transparent;min-height:52px}
+.item:hover,.item.active{background:#eaf6f0}.item.active{box-shadow:inset 0 0 0 2px #146f5955}
+.pill{font-size:11px;padding:5px 8px;border-radius:30px;background:#e8efeb;white-space:nowrap;border:1px solid transparent}
+#mapWrap{position:relative;min-height:0;min-width:0}#map{position:absolute;inset:0;background:#dfe7e2}
+.maptop{position:absolute;top:10px;left:10px;right:64px;z-index:800;display:flex;gap:8px;align-items:flex-start;pointer-events:none}.maptop>*{pointer-events:auto}
+.searchBox{position:relative;flex:1;max-width:380px}#mapSearch{box-shadow:0 2px 10px #0b211b2e;border-color:#fff;font-size:15px;padding:11px 12px}
+#searchResults{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#fff;border-radius:10px;box-shadow:0 8px 24px #0b211b33;overflow:hidden;max-height:50vh;overflow-y:auto}
+#searchResults button{display:flex;justify-content:space-between;width:100%;border:0;background:#fff;padding:11px 12px;text-align:left;border-bottom:1px solid #eef2f0;gap:8px}#searchResults button:hover,#searchResults button.on{background:#eaf6f0}
+#listToggle{display:none}
+#mapNotice{position:absolute;left:50%;transform:translateX(-50%);top:62px;z-index:800;background:#fff4db;color:#765313;border:1px solid #f3dfb2;border-radius:10px;padding:8px 12px;font-size:12.5px;box-shadow:0 2px 10px #0002;max-width:90%}
+/* Controis do mapa */
+.leaflet-control.cb{background:#fff;border-radius:10px;box-shadow:0 2px 10px #0b211b33;border:0}
+.cb-btn{width:42px;height:42px;border:0;background:#fff;border-radius:10px;font-size:18px;display:flex;align-items:center;justify-content:center;color:#175045}
+.cb-btn.on{background:#146f59;color:#fff}
+.cb-panel{padding:12px;width:240px;font-size:13px}.cb-panel h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}.cb-panel label{display:flex;gap:8px;align-items:center;padding:5px 0}.cb-panel input[type=range]{width:100%}
+.cb-legend{padding:8px 10px;font-size:11.5px;max-width:230px}.cb-legend summary{cursor:pointer;font-weight:650;list-style:none}.cb-legend summary::-webkit-details-marker{display:none}.cb-legend div{display:flex;align-items:center;gap:6px;margin-top:4px}
+.mark{height:11px;width:11px;display:inline-block;border-radius:3px;flex:none;border:1px solid #0002}
+.orthoInfo{background:#ffffffe6!important;padding:3px 7px!important;font-size:11px;border-radius:6px;max-width:60vw}
+.leaflet-control-attribution{font-size:10px}.leaflet-bar a{width:38px!important;height:38px!important;line-height:38px!important;font-size:20px!important}.leaflet-touch .leaflet-bar{border:0;box-shadow:0 2px 10px #0b211b33;border-radius:10px;overflow:hidden}
+.gpsDot{background:#2a7fff;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #2a7fff66}
+/* Ficha */
+#sheet{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:relative}
+.sheetHead{padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+.grab{display:none}.sheetTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}.sheetTitle h2{margin:0;font-size:19px;letter-spacing:-.3px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sheetClose{display:none}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:8px 0 0;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:transparent;padding:9px 11px;border-radius:9px 9px 0 0;font-weight:650;font-size:13px;color:var(--muted);white-space:nowrap;border-bottom:3px solid transparent;min-height:40px}
+.tab.active{color:#123b32;border-bottom-color:var(--brand2);background:#f1f7f4}.tab small{font-weight:500;margin-left:3px;opacity:.75}
+#detail{overflow:auto;flex:1;min-height:0;padding:14px 16px 20px;-webkit-overflow-scrolling:touch}
+.pane{display:none}.pane.on{display:block}.paneHead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top:0}
+.block{border-top:1px solid #e9efea;padding-top:8px;margin-top:16px}
+.entry{background:#f5f8f6;border:1px solid #e4ebe6;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.entry .mini{font-size:11px;color:#6c7c73}
+.actionbar{display:flex;gap:8px;padding:10px 12px calc(10px + var(--sab));border-top:1px solid var(--line);background:#fff}
+.actionbar .btn{flex:1;flex-direction:column;gap:2px;font-size:12px;padding:6px 4px}.actionbar .btn span{font-size:19px;line-height:1}
+.empty{padding:28px 16px;text-align:center}
+/* Modais e avisos */
+.overlay{position:fixed;inset:0;z-index:3000;background:#0b211b88;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:90dvh;overflow:auto;padding:22px}
+.notice{padding:10px 14px;background:#fff4db;color:#765313;border:1px solid #f3dfb2;border-radius:10px;font-size:13px}
+#appNotice{position:fixed;top:calc(var(--hdr) + var(--sat) + 8px);left:50%;transform:translateX(-50%);z-index:1500;max-width:min(640px,92vw)}
+.toast{position:fixed;bottom:calc(16px + var(--sab));right:15px;background:#193a30;color:#fff;border-radius:12px;padding:12px 16px;z-index:4000;max-width:90vw;box-shadow:0 9px 25px #10271b33}
+#updateBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sab));z-index:3500;background:#123b32;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 9px 25px #10271b55;font-size:13px}
+.filebox{border:1px dashed #aacbbd;border-radius:12px;padding:14px;background:#f8fbf9}
+/* Ticket 01 */
+.act{white-space:normal}.act .obs{white-space:pre-wrap;margin-top:4px}.void{opacity:.55}.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.thumb{width:86px;height:74px;border:1px solid #d6e3dc;border-radius:8px;padding:0;overflow:hidden;background:#eef3f0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#8a2b2b}.thumb img{width:100%;height:100%;object-fit:cover}.thumb span{font-size:10px;color:#3c5249;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gallery .thumb{width:calc(33.33% - 6px);height:auto;aspect-ratio:1}
+.modal.wide{max-width:1000px}.modal img.big{max-width:100%;max-height:58vh;display:block;margin:10px auto;border-radius:8px}.pdfview{width:100%;height:60vh;border:1px solid #dae7e0;border-radius:8px;margin:10px 0;background:#f5f8f6}
+.metagrid{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:13px}.filebox .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Ordenador mediano */
+@media(max-width:1280px) and (min-width:1001px){#app{grid-template-columns:290px minmax(0,1fr) 400px}}
+/* Móbil e tableta */
+@media(max-width:1000px){
+ :root{--hdr:48px}
+ header{padding-left:12px;padding-right:8px}.brand small{display:none}.brand b{font-size:15px}.brand img{width:26px;height:26px}
+ .hideM{display:none!important}
+ #app{display:block;position:relative;height:calc(100dvh - var(--hdr) - var(--sat))}
+ #mapWrap{position:absolute;inset:0}
+ .maptop{right:58px}#listToggle{display:inline-flex;box-shadow:0 2px 10px #0b211b2e;border-color:#fff;min-height:44px}
+ .side{position:absolute;inset:0;z-index:1100;transform:translateX(-102%);transition:transform .22s ease;border-right:0}.side.open{transform:none}
+ .side .sideHead{padding-top:10px}
+ #sheet{position:absolute;left:0;right:0;bottom:0;z-index:1000;border:0;border-radius:18px 18px 0 0;box-shadow:0 -6px 24px #0b211b33;height:calc(100% - 8px);transform:translateY(100%);transition:transform .25s ease}
+ #sheet[data-state=peek]{transform:translateY(calc(100% - 92px - var(--sab)))}
+ #sheet[data-state=half]{transform:translateY(45%)}
+ #sheet[data-state=full]{transform:translateY(0)}
+ #sheet.dragging{transition:none}
+ #sheet[data-state=half] #detail{padding-bottom:calc(45dvh + 20px)}
+ .grab{display:block;width:44px;height:5px;border-radius:5px;background:#c9d6cf;margin:0 auto 8px}
+ .sheetHead{padding:8px 14px 0;touch-action:none;cursor:grab}
+ #sheetClose{display:inline-flex}
+ .actionbar{position:sticky;bottom:0}
+ #sheet[data-state=half] .actionbar{position:absolute;left:0;right:0;bottom:45%}
+ #sheet[data-state=peek] .tabs,#sheet[data-state=peek] #detail,#sheet[data-state=peek] .actionbar{visibility:hidden}
+ .field input,.field select,.field textarea,.side input,.side select,#mapSearch{font-size:16px}
+ .fields{grid-template-columns:1fr}.wide{grid-column:auto}.filebox .fields{grid-template-columns:1fr}.metagrid{grid-template-columns:1fr}
+ .modal{padding:16px;max-height:92dvh;border-radius:16px}.overlay{padding:10px;align-items:flex-end}
+ .leaflet-bottom{bottom:calc(8px + var(--sab));transition:bottom .25s}#app:has(#sheet:not([data-state=hidden])) .leaflet-bottom{bottom:calc(96px + var(--sab))}
+ .cb-panel{width:220px}
+ .toast{left:12px;right:12px;bottom:calc(104px + var(--sab))}
+ .sync{max-width:46vw;overflow:hidden;text-overflow:ellipsis}
+ .orthoInfo{font-size:10px;max-width:52vw}.leaflet-control-attribution{max-width:calc(100vw - 150px);white-space:normal;font-size:9px;line-height:1.25}
+}
+@media(max-width:520px){.brand b{display:none}.headerActions{gap:4px}}
+@media(prefers-reduced-motion:reduce){#sheet,.side{transition:none}}
+</style></head><body>
+<header><div class="brand"><img src="icons/icon-192.png" alt=""><b>Concellos Bieito</b><small>Seguimento de maquinaria cedida</small></div>
+<div class="headerActions"><span id="syncLabel" class="sync idle" role="status" aria-live="polite">Sen conectar</span><button class="btn ghost icon hidden" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos">↻</button><button class="btn ghost hidden hideM" id="exportBtn">Excel</button><button class="btn ghost hidden" id="logoutBtn">Saír</button></div></header>
+<main>
+<section id="login"><div class="loginTitle">Acceso ao panel</div><p class="muted">Os datos gárdanse nunha base privada en Supabase. Usa o acceso autorizado.</p><div class="fields"><label class="field wide">URL do proxecto Supabase<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="off" inputmode="url"></label><label class="field wide">Clave pública (sb_publishable_...)<input id="key" autocomplete="off" type="password"></label><label class="field wide">Correo de acceso<input id="email" type="email" autocomplete="username"></label><label class="field wide">Contrasinal<input id="password" type="password" autocomplete="current-password"></label></div><p><button id="loginBtn" class="btn primary big">Entrar na aplicación</button></p><p id="loginError" class="bad tiny"></p><p class="muted">A URL e a clave pública quedan gardadas neste navegador; o contrasinal non se garda nesta aplicación. Non uses claves secretas ou service_role.</p></section>
+<section id="app" class="hidden">
+ <aside class="side" id="sidebar" aria-label="Concellos">
+  <div class="sideHead"><div class="flex" style="justify-content:space-between"><strong>Concellos</strong><span class="muted tiny" id="mapHint"></span><button class="btn icon" id="sideClose" aria-label="Pechar lista" style="display:none">✕</button></div>
+   <div class="kpis" id="kpis"></div>
+   <input id="search" type="search" placeholder="Filtrar: concello, empresa, matrícula…" aria-label="Filtrar lista">
+   <div class="row"><select id="province" aria-label="Provincia"><option value="">Todas as provincias</option><option>A CORUÑA</option><option>LUGO</option><option>OURENSE</option><option>PONTEVEDRA</option></select><select id="filter" aria-label="Estado"><option value="">Todos os estados</option><option value="avaria">Avaría</option><option value="visitado">Visitado</option><option value="fotos">Fotos recibidas</option><option value="contactado">Contactado</option><option value="pendente">Pendente</option><option value="sen-tractor">Sen tractor na relación</option><option value="so-apero">Só apero</option><option value="non-localizado">Tractor non localizado</option></select></div>
+  </div>
+  <div id="list"></div>
+ </aside>
+ <section id="mapWrap" aria-label="Mapa">
+  <div id="map"></div>
+  <div class="maptop"><button class="btn" id="listToggle" aria-label="Abrir lista de concellos">☰ Lista</button><div class="searchBox"><input id="mapSearch" type="search" placeholder="Buscar concello no mapa…" autocomplete="off" aria-label="Buscar concello"><div id="searchResults" class="hidden" role="listbox"></div></div></div>
+  <div id="mapNotice" class="hidden" role="status"></div>
+ </section>
+ <section id="sheet" data-state="hidden" aria-label="Ficha do concello">
+  <div class="sheetHead" id="sheetHead"><div class="grab" aria-hidden="true"></div>
+   <div class="sheetTitle"><h2 id="detailTitle">Ficha do concello</h2><div class="flex" style="flex-wrap:nowrap"><span id="statusTag" class="pill">Selecciona no mapa</span><button class="btn icon" id="sheetClose" aria-label="Minimizar ficha">▾</button></div></div>
+   <div class="muted" id="detailMeta" style="margin-top:3px"></div>
+   <div class="tabs" id="tabs" role="tablist"></div>
+  </div>
+  <div id="detail"><div class="empty muted">Selecciona un concello no mapa ou na lista para ver a súa ficha.</div></div>
+  <div class="actionbar hidden" id="actionbar"><button class="btn big" data-quick="visit"><span>＋</span>Visita</button><button class="btn big" data-quick="camera"><span>📷</span>Foto</button><button class="btn big" data-quick="doc"><span>📄</span>Documento</button><button class="btn big primary" data-quick="save"><span>✓</span>Gardar</button></div>
+ </section>
+</section>
+</main>
+<div id="appNotice" class="notice hidden"></div><div id="notice" class="hidden"></div>
+<div id="modalRoot"></div><div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<div id="updateBar" class="hidden"><span>Hai unha versión nova da aplicación.</span><button class="btn" id="updateBtn">Actualizar</button><button class="btn ghost icon" id="updateLater" aria-label="Máis tarde">✕</button></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="app.js"></script></body></html>
