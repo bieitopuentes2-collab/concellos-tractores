@@ -17,7 +17,7 @@ const COR_XERAL={'Sen tractor':'#e9d5c3','Sen info':'#a3adab','Info non localiza
 const CAMPOS_CONTROL=[
  ['estadoXeral','Estado xeral','e'],['kmzData','Data de preparación do KML/KMZ','d'],['kmzFicheiro','Ficheiro KML/KMZ para campo','t'],
  ['tramos','Tramos preparados','n'],['kmPreparados','km preparados','n'],['tramosSeguros','Tramos seguros','n'],['tramosAproximados','Tramos aproximados','n'],
- ['excelCompanheiro','Excel que acompaña ao KML','sn'],
+ ['excelCompanheiro','Excel que acompaña ao KML','ck'], // v3.3: marca (antes desplegable Si/Non; mesmos valores)
  ['kmFeitos','Resultado de campo · km feitos','n'],['kmNonFeitos','Resultado de campo · km non feitos','n'],
  ['actaEnviada','Acta enviada','ck'],['actaAsinada','Acta recibida/asinada','ck'],
  ['notaCampo','Nota de control de campo (visitas)','a'],['notaChamadas','Nota de control de chamadas e correos','a']];
@@ -90,7 +90,9 @@ function renderList(){let a=all().filter(matchFilter),ctl=modoCor==='control';$(
 const IGN_WMTS=(svc,layer,fmt)=>`https://www.ign.es/wmts/${svc}?service=WMTS&request=GetTile&version=1.0.0&layer=${layer}&style=default&tilematrixset=GoogleMapsCompatible&tilematrix={z}&tilerow={y}&tilecol={x}&format=${fmt}`;
 const IGN_ATTR='© <a href="https://www.ign.es" target="_blank" rel="noopener">IGN</a>/CNIG · CC BY 4.0 scne.es';
 const BASES={
- orto:{label:'Ortofoto PNOA',url:IGN_WMTS('pnoa-ma','OI.OrthoimageCoverage','image/jpeg'),nat:19,attr:'Ortofoto PNOA máxima actualidad '+IGN_ATTR,alt:'gris'},
+ orto:{label:'Ortofoto PNOA',url:IGN_WMTS('pnoa-ma','OI.OrthoimageCoverage','image/jpeg'),nat:19,attr:'Ortofoto PNOA máxima actualidad '+IGN_ATTR,alt:'ortow'},
+ // v3.3: mesma ortofoto PNOA servida polo WMS oficial do IGN. Úsase só se o WMTS falla (non aparece no selector).
+ ortow:{label:'Ortofoto PNOA (WMS)',wms:'https://www.ign.es/wms-inspire/pnoa-ma',layers:'OI.OrthoimageCoverage',nat:19,attr:'Ortofoto PNOA máxima actualidad (WMS) '+IGN_ATTR,alt:'gris',oculto:true},
  topo:{label:'Topográfico IGN',url:IGN_WMTS('mapa-raster','MTN','image/jpeg'),nat:17,attr:'Cartografía ráster '+IGN_ATTR,alt:'gris'},
  gris:{label:'Mapa base sinxelo',url:IGN_WMTS('ign-base','IGNBase-gris','image/jpeg'),nat:18,attr:'Mapa base '+IGN_ATTR,alt:'osm'},
  osm:{label:'OpenStreetMap',url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',nat:19,attr:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',alt:'none'},
@@ -98,39 +100,46 @@ const BASES={
 };
 const LABELS_URL=IGN_WMTS('ign-base','IGNBaseOrto','image/png');
 const PNOA_WMS='https://www.ign.es/wms-inspire/pnoa-ma';
+// v3.3: a preferencia de fondo gárdase nunha clave nova. Na v3.2 un fallo puntual de teselas (cobertura móbil) gardaba
+// o fondo alternativo («Mapa base sinxelo») como preferencia e a ortofoto xa non volvía aparecer nunca máis nese dispositivo.
+const PREF_BASE='base33';
+const isImg=k=>k==='orto'||k==='ortow'||k==='topo',isOrto=k=>k==='orto'||k==='ortow';
 const pref=(k,v)=>{try{if(v===undefined)return localStorage.getItem('cb-'+k);localStorage.setItem('cb-'+k,String(v))}catch(e){return null}};
 let baseKey='orto',baseLayer=null,labelsLayer=null,fillOp=null,byNameMap=new Map(),layerById=new Map(),selId='',gpsLayer=null,orthoCtl=null,orthoTimer=null,orthoCache=new Map(),orthoAbort=null,tileStat={err:0,ok:0,key:''};
 const isMobile=()=>matchMedia('(max-width:1000px)').matches;
 function lookupFeature(f,names){let n=[f.properties?.name,f.properties?.NAME,f.properties?.nombre,f.properties?.municipality].filter(Boolean);for(let x of n){let m=names.get(slug(x));if(m)return m;}return null}
-function curOpacity(){return fillOp??(baseKey==='orto'||baseKey==='topo'?.5:.82)}
+function curOpacity(){return fillOp??(isImg(baseKey)?.4:.82)}
+// v3.3: sobre a ortofoto as cores dos concellos esvaécense ao achegarse, para que a imaxe se vexa (antes tapábana ao 50 %)
+function zoomFade(){if(!isImg(baseKey)||!map)return 1;const z=map.getZoom();return z>=13?.15:z>=11?.4:z>=9?.7:1}
 function featStyle(f){
- const r=lookupFeature(f,byNameMap),onImg=baseKey==='orto'||baseKey==='topo',sel=r&&r.id===selId;
- return {color:sel?'#ffd400':onImg?'#ffffffcc':'#ffffff',weight:sel?4:onImg?.9:.7,fillColor:r?corFicha(r):'#dce5df',fillOpacity:r?curOpacity():(onImg?0:.35)};
+ const r=lookupFeature(f,byNameMap),onImg=isImg(baseKey),sel=r&&r.id===selId,op=curOpacity()*zoomFade();
+ return {color:sel?'#ffd400':onImg?'#ffffffcc':'#ffffff',weight:sel?4:onImg?.9:.7,fillColor:r?corFicha(r):'#dce5df',fillOpacity:r?(sel&&onImg?Math.min(op,.12):op):(onImg?0:.35)};
 }
-function provStyle(){const onImg=baseKey==='orto'||baseKey==='topo';return {color:onImg?'#ffffff':'#26443b',weight:onImg?3.4:3,opacity:.95,fill:false}}
+function provStyle(){const onImg=isImg(baseKey);return {color:onImg?'#ffffff':'#26443b',weight:onImg?3.4:3,opacity:.95,fill:false}}
 function mapNotice(s){const n=$('mapNotice');if(!n)return;n.textContent=s||'';n.classList.toggle('hidden',!s)}
 function setBase(k,why){
- if(!BASES[k])k='orto';baseKey=k;pref('base',k);
+ if(!BASES[k])k='orto';baseKey=k;if(why!=='fallback'&&why!=='init')pref(PREF_BASE,k); // o fondo alternativo automático NON se garda
  if(baseLayer){baseLayer.remove();baseLayer=null}
  const b=BASES[k];tileStat={err:0,ok:0,key:k};
- if(b.url){
-  baseLayer=L.tileLayer(b.url,{maxZoom:19,maxNativeZoom:b.nat,attribution:b.attr,updateWhenIdle:true,keepBuffer:1,crossOrigin:false,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='});
+ if(b.url||b.wms){
+  const lo={maxZoom:19,maxNativeZoom:b.nat,attribution:b.attr,updateWhenIdle:true,keepBuffer:1,crossOrigin:false,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='};
+  baseLayer=b.wms?L.tileLayer.wms(b.wms,{...lo,layers:b.layers,format:'image/jpeg',transparent:false,version:'1.3.0',styles:''}):L.tileLayer(b.url,lo);
   baseLayer.on('tileload',e=>{if(tileStat.key===k&&!String(e.tile?.src||'').startsWith('data:'))tileStat.ok++});
-  baseLayer.on('tileerror',()=>{if(tileStat.key!==k)return;tileStat.err++;if(tileStat.ok===0&&tileStat.err>=4&&b.alt){const alt=b.alt;mapNotice(`${b.label} non dispoñible agora. Amosando «${BASES[alt].label}».`);setTimeout(()=>mapNotice(''),9000);setBase(alt,'fallback');syncBasePanel()}});
+  baseLayer.on('tileerror',()=>{if(tileStat.key!==k)return;tileStat.err++;if(tileStat.ok===0&&tileStat.err>=6&&b.alt&&navigator.onLine!==false){const alt=b.alt;mapNotice(`${b.label} non dispoñible agora. Amosando «${BASES[alt].label}».`);setTimeout(()=>mapNotice(''),9000);setBase(alt,'fallback');syncBasePanel()}});
   baseLayer.addTo(map);
  }
  if(!why)mapNotice('');
  if(labelsLayer){labelsLayer.remove();labelsLayer=null}
- if(k==='orto'&&pref('labels')!=='0'){labelsLayer=L.tileLayer(LABELS_URL,{pane:'labels',maxZoom:19,maxNativeZoom:18,updateWhenIdle:true,keepBuffer:1}).addTo(map)}
+ if(isOrto(k)&&pref('labels')!=='0'){labelsLayer=L.tileLayer(LABELS_URL,{pane:'labels',maxZoom:19,maxNativeZoom:18,updateWhenIdle:true,keepBuffer:1}).addTo(map)}
  if(layer)layer.setStyle(featStyle);if(provinceLayer)provinceLayer.setStyle(provStyle());
  $('map').style.background=k==='none'?'#eef2f0':'#dfe7e2';
  updateOrtho();
 }
-function syncBasePanel(){document.querySelectorAll('input[name=cbBase]').forEach(i=>i.checked=i.value===baseKey);const lb=document.querySelector('#cbLabels');if(lb)lb.closest('label').style.display=baseKey==='orto'?'':'none';const op=document.querySelector('#cbOpacity');if(op)op.value=Math.round(curOpacity()*100)}
+function syncBasePanel(){document.querySelectorAll('input[name=cbBase]').forEach(i=>i.checked=i.value===(baseKey==='ortow'?'orto':baseKey));const lb=document.querySelector('#cbLabels');if(lb)lb.closest('label').style.display=isOrto(baseKey)?'':'none';const op=document.querySelector('#cbOpacity');if(op)op.value=Math.round(curOpacity()*100)}
 function orthoSrc(){return isMobile()?'PNOA MA · IGN':'Ortofoto PNOA máxima actualidad · IGN/CNIG'}
 function updateOrtho(){
  if(!orthoCtl)return;const el=orthoCtl.getContainer();
- if(baseKey!=='orto'){el.style.display='none';return}
+ if(!isOrto(baseKey)){el.style.display='none';return}
  el.style.display='';clearTimeout(orthoTimer);
  if(map.getZoom()<11){el.textContent=orthoSrc()+' · achégate para ver a data de voo';return}
  orthoTimer=setTimeout(queryOrthoDate,900);
@@ -151,7 +160,7 @@ async function queryOrthoDate(){
 function control(pos,build){const C=L.Control.extend({onAdd(){const d=L.DomUtil.create('div','leaflet-control cb');L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);build(d);return d}});return new C({position:pos}).addTo(map)}
 function buildControls(){
  L.control.zoom({position:'topright'}).addTo(map);
- control('topright',d=>{d.innerHTML=`<button class="cb-btn" id="cbLayersBtn" title="Fondo e transparencia" aria-label="Fondo e transparencia" aria-expanded="false">▦</button><div class="cb-panel hidden" id="cbLayers"><h4>Fondo</h4>${Object.entries(BASES).map(([k,b])=>`<label><input type="radio" name="cbBase" value="${k}"> ${safe(b.label)}</label>`).join('')}<label><input type="checkbox" id="cbLabels"> Topónimos sobre a ortofoto</label><h4 style="margin-top:8px">Colorear concellos por</h4><label><input type="radio" name="cbModo" value="seguimento"> Seguimento (visitas / avarías)</label><label><input type="radio" name="cbModo" value="control"> Estado xeral (control)</label><h4 style="margin-top:8px">Transparencia das cores</h4><input type="range" id="cbOpacity" min="0" max="100" step="5" aria-label="Opacidade das cores municipais"><div class="muted tiny" id="cbOpLabel"></div></div>`;
+ control('topright',d=>{d.innerHTML=`<button class="cb-btn" id="cbLayersBtn" title="Fondo e transparencia" aria-label="Fondo e transparencia" aria-expanded="false">▦</button><div class="cb-panel hidden" id="cbLayers"><h4>Fondo</h4>${Object.entries(BASES).filter(([,b])=>!b.oculto).map(([k,b])=>`<label><input type="radio" name="cbBase" value="${k}"> ${safe(b.label)}</label>`).join('')}<label><input type="checkbox" id="cbLabels"> Topónimos sobre a ortofoto</label><h4 style="margin-top:8px">Colorear concellos por</h4><label><input type="radio" name="cbModo" value="seguimento"> Seguimento (visitas / avarías)</label><label><input type="radio" name="cbModo" value="control"> Estado xeral (control)</label><h4 style="margin-top:8px">Transparencia das cores</h4><input type="range" id="cbOpacity" min="0" max="100" step="5" aria-label="Opacidade das cores municipais"><div class="muted tiny" id="cbOpLabel"></div></div>`;
   const panel=d.querySelector('#cbLayers'),btn=d.querySelector('#cbLayersBtn');
   btn.onclick=()=>{const open=panel.classList.toggle('hidden')===false;btn.classList.toggle('on',open);btn.setAttribute('aria-expanded',open);btn.classList.toggle('hidden',open)};
   map.on('click',()=>{panel.classList.add('hidden');btn.classList.remove('hidden','on')});
@@ -209,7 +218,7 @@ async function initMap(){
  map=L.map('map',{zoomControl:false,preferCanvas:true,tap:true,minZoom:6,maxZoom:19,worldCopyJump:false}).setView([42.78,-7.85],8);
  map.createPane('labels');map.getPane('labels').style.zIndex=450;map.getPane('labels').style.pointerEvents='none';
  const savedOp=parseFloat(pref('opacity'));if(!isNaN(savedOp))fillOp=savedOp;
- buildControls();setBase(pref('base')||'orto');
+ buildControls();setBase(pref(PREF_BASE)||'orto','init');map.on('zoomend',()=>{if(layer&&isImg(baseKey))layer.setStyle(featStyle)});
  map.on('moveend',updateOrtho);
  addEventListener('resize',()=>map.invalidateSize());
  try{
@@ -227,7 +236,9 @@ function labelRow(k,v){return `<p><strong>${safe(k)}:</strong> ${safe(v??'—')}
 function editButton(action,title){return `<button class="btn" data-action="${action}">${title}</button>`}
 // ===== TICKET 02 · Ficha con pestanas, folla inferior móbil, estado de sincronización =====
 // v2: engádese «Control». «Documentación» (fotos/PDF) queda oculta mentres MOSTRAR_DOCUMENTOS=false.
-const TABS=[['ctrl','Control'],['info','Información'],['maq','Maquinaria'],['vis','Visitas'],['trab','Traballos'],['doc','Documentación']].filter(([k])=>k!=='doc'||MOSTRAR_DOCUMENTOS);
+// v3.3: «Visitas» leva tamén os km e as notas de campo; «Chamadas» (novo) leva as notas de chamadas/correos e os contactos.
+// «Control» queda só con marcas (ticks) e o estado xeral.
+const TABS=[['ctrl','Control'],['info','Información'],['maq','Maquinaria'],['vis','Visitas'],['cham','Chamadas'],['trab','Traballos'],['doc','Documentación']].filter(([k])=>k!=='doc'||MOSTRAR_DOCUMENTOS);
 let currentTab=TABS.some(([k])=>k===pref('tab'))?pref('tab'):'ctrl',lastSync=null,syncState='idle';
 function setSync(state,msg){
  syncState=state;const el=$('syncLabel');if(!el)return;
@@ -239,7 +250,7 @@ function setSync(state,msg){
 function markDirty(){if(!dirty){dirty=true;setSync('dirty')}}
 function sheet(state){const s=$('sheet');if(!s)return;s.dataset.state=state;$('actionbar').classList.toggle('hidden',!currentId);if(map)setTimeout(()=>map.invalidateSize(),260)}
 function setTab(k,user){currentTab=k;pref('tab',k);document.querySelectorAll('#tabs .tab').forEach(b=>{const on=b.dataset.tab===k;b.classList.toggle('active',on);b.setAttribute('aria-selected',on)});document.querySelectorAll('#detail .pane').forEach(p=>p.classList.toggle('on',p.dataset.pane===k));if(user&&isMobile()&&$('sheet').dataset.state==='peek')sheet('half')}
-function tabCounts(r){const d=docsCache.get(currentId);return {maq:(r.machines||[]).length,vis:(r.visits||[]).length,trab:d?d.acts.filter(a=>!a.anulada).length:'',doc:d?d.files.filter(f=>!f.anulado).length:''}}
+function tabCounts(r){const d=docsCache.get(currentId);return {maq:(r.machines||[]).length,vis:(r.visits||[]).length,cham:parseNotas(r.notaChamadas).length||'',trab:d?d.acts.filter(a=>!a.anulada).length:'',doc:d?d.files.filter(f=>!f.anulado).length:''}}
 function renderTabs(r){const c=tabCounts(r);$('tabs').innerHTML=TABS.map(([k,t])=>`<button role="tab" class="tab${k===currentTab?' active':''}" data-tab="${k}" aria-selected="${k===currentTab}">${t}${c[k]!==undefined&&c[k]!==''?`<small>${c[k]}</small>`:''}</button>`).join('');$('tabs').querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab,true))}
 function renderDetail(){
  const row=rows.get(currentId);
@@ -251,14 +262,14 @@ function renderDetail(){
  let visits=(r.visits||[]).map((v,i)=>`<div class="entry"><strong>${safe(v.fecha||'Sen data')}</strong> · ${safe(v.lugar||'')}<div>${safe(v.traballo||'')}</div><div>${safe(v.observacions||'')}</div><div class="mini">Horas: ${safe(v.horas||'—')}</div><button class="btn" data-editvisit="${i}">Editar</button></div>`).join('')||'<p class="muted">Non hai visitas gardadas.</p>';
  let machines=(r.machines||[]).map((m,i)=>`<div class="entry"><strong>${safe([m.marca,m.modelo].filter(Boolean).join(' ')||'Máquina sen identificar')}</strong><div>${safe(m.matricula||'Matrícula non indicada')} · ${safe(m.apeiro||'')}</div><div class="mini">Inicio: ${safe(m.inicio||'—')} · Fin: ${safe(m.fin||'—')}</div><button class="btn" data-editmachine="${i}">Editar</button> <button class="btn" data-docmachine="${i}">${MOSTRAR_DOCUMENTOS?'Documentación':'Traballos'}</button></div>`).join('')||'<p class="muted">Sen maquinaria rexistrada.</p>';
  let contacts=(r.contacts||[]).map((c,i)=>`<div class="entry"><strong>${safe(c.contacto||'Contacto')}</strong><button class="btn" data-editcontact="${i}">Editar contacto</button><button class="btn" data-addhistory="${i}">+ Anotación</button><div class="mini">${(c.historial||[]).map((h,j)=>`<div style="margin:7px 0">${safe(h.fecha||'')} · ${safe(h.resumo||'')} <button class="btn" data-edithistory="${i}:${j}">Editar</button></div>`).join('')}</div></div>`).join('')||'<p class="muted">Sen contactos</p>';
- $('detail').innerHTML=`${paneControl(r)}<section class="pane" data-pane="info"><div class="fields"><label class="field">Estado da comprobación<select id="fVisita"><option value="pendente">Pendente</option><option value="contactado">Contactado</option><option value="non-localizado">Concello visitado, tractor non localizado</option><option value="fotos">Fotos recibidas</option><option value="visitado">Visita presencial</option></select></label><label class="field">Estado mecánico<select id="fMecanica"><option value="sen-datos">Sen datos actualizados</option><option value="operativa">Operativa</option><option value="avariada-confirmada">Parado por avaría (confirmado)</option><option value="en-reparacion">En reparación</option><option value="reparada">Reparada</option><option value="parada">Parada por outra causa</option></select></label><label class="field wide">Observacións xerais<textarea id="fNotas"></textarea></label><label class="field wide">Información documental<textarea id="fDoc"></textarea></label></div><div class="block"><h3>Información de orixe e acta de entrega</h3><div class="fields"><label class="field">Empresa<input id="fEmpresa" value="${safe(r.empresa||'')}" placeholder="Empresa"></label><label class="field">Apeiro<input id="fApeiro" value="${safe(r.apeiro||'')}" placeholder="Apeiro asignado"></label><label class="field">Acta<input id="fActa" value="${safe(r.acta||'')}" placeholder="Si / Non / Pendente"></label><label class="field">Acta asinada (Si / Non / Pendente)<input id="fFirmada" value="${safe(r.firmada||'')}" placeholder="Si / Non / Pendente"></label><label class="field wide">Asinada por (nome e cargo)<input id="fAsinadaPor" value="${safe(r.asinadaPor||'')}" placeholder="Nome e cargo"></label></div></div><div class="block"><div class="paneHead"><h3>Contactos e historial</h3><button class="btn" data-action="contact">+ Contacto</button></div>${contacts}</div><p class="muted">Modifica os campos e pulsa «Gardar». Os cambios sincronízanse en todos os dispositivos.</p></section>
+ $('detail').innerHTML=`${paneControl(r)}<section class="pane" data-pane="info"><div class="fields"><label class="field">Estado da comprobación<select id="fVisita"><option value="pendente">Pendente</option><option value="contactado">Contactado</option><option value="non-localizado">Concello visitado, tractor non localizado</option><option value="fotos">Fotos recibidas</option><option value="visitado">Visita presencial</option></select></label><label class="field">Estado mecánico<select id="fMecanica"><option value="sen-datos">Sen datos actualizados</option><option value="operativa">Operativa</option><option value="avariada-confirmada">Parado por avaría (confirmado)</option><option value="en-reparacion">En reparación</option><option value="reparada">Reparada</option><option value="parada">Parada por outra causa</option></select></label><label class="field wide">Observacións xerais<textarea id="fNotas"></textarea></label><label class="field wide">Información documental<textarea id="fDoc"></textarea></label></div><div class="block"><h3>Información de orixe e acta de entrega</h3><div class="fields"><label class="field">Empresa<input id="fEmpresa" value="${safe(r.empresa||'')}" placeholder="Empresa"></label><label class="field">Apeiro<input id="fApeiro" value="${safe(r.apeiro||'')}" placeholder="Apeiro asignado"></label><label class="field">Acta<input id="fActa" value="${safe(r.acta||'')}" placeholder="Si / Non / Pendente"></label><label class="field">Acta asinada (Si / Non / Pendente)<input id="fFirmada" value="${safe(r.firmada||'')}" placeholder="Si / Non / Pendente"></label><label class="field wide">Asinada por (nome e cargo)<input id="fAsinadaPor" value="${safe(r.asinadaPor||'')}" placeholder="Nome e cargo"></label></div></div><p class="muted tiny">Os contactos e o seu historial están agora no separador «Chamadas».</p><p class="muted">Modifica os campos e pulsa «Gardar». Os cambios sincronízanse en todos os dispositivos.</p></section>
 <section class="pane" data-pane="maq"><div class="paneHead"><h3>Maquinaria (${(r.machines||[]).length}) · Tractores contabilizados: ${tractorCount(r)}</h3><button class="btn" data-action="machine">+ Máquina</button></div>${machines}</section>
-<section class="pane" data-pane="vis"><div class="paneHead"><h3>Historial de visitas (${(r.visits||[]).length})</h3><button class="btn" data-action="visit">+ Visita</button></div>${visits}</section>
+${paneVisitas(r,visits)}${paneChamadas(r,contacts)}
 <section class="pane" data-pane="trab"><div id="docs"><span class="muted">Cargando…</span></div></section>
 ${MOSTRAR_DOCUMENTOS?`<section class="pane" data-pane="doc"><div class="paneHead"><h3>Fotografías e documentos</h3></div><div class="flex"><button class="btn big" data-quick="camera"><span>📷</span> Facer foto</button><button class="btn big" data-quick="doc"><span>📄</span> Adxuntar PDF / imaxe</button></div><div id="docsFiles"><span class="muted">Cargando…</span></div></section>`:''}`;
  $('fVisita').value=['pendente','contactado','fotos','visitado','non-localizado'].includes(s.visit)?s.visit:'pendente';$('fMecanica').value=(s.broken?'avariada-confirmada':(r.estadoMecanico==='avariada'?'operativa':r.estadoMecanico||'operativa'));$('fNotas').value=r.notaSeaga||'';$('fDoc').value=r.comprobacionDocumental||'';
  ['fVisita','fMecanica','fNotas','fDoc','fEmpresa','fApeiro','fActa','fFirmada','fAsinadaPor',...CAMPOS_CONTROL.map(c=>'c_'+c[0])].forEach(k=>{$(k).addEventListener('input',markDirty);$(k).addEventListener('change',markDirty)});
- const D=$('detail');bindControl();
+ const D=$('detail');bindFicha();
  D.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{let a=b.dataset.action;if(a==='save')saveForm();else if(a==='visit')editVisit(-1);else if(a==='machine')editMachine(-1);else if(a==='photo'&&MOSTRAR_DOCUMENTOS)uploadDialog({});else if(a==='contact')editContact(-1)});
  D.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>quick(b.dataset.quick));
  D.querySelectorAll('[data-editvisit]').forEach(b=>b.onclick=()=>editVisit(+b.dataset.editvisit));D.querySelectorAll('[data-editmachine]').forEach(b=>b.onclick=()=>editMachine(+b.dataset.editmachine));D.querySelectorAll('[data-editcontact]').forEach(b=>b.onclick=()=>editContact(+b.dataset.editcontact));D.querySelectorAll('[data-addhistory]').forEach(b=>b.onclick=()=>editHistory(+b.dataset.addhistory,-1));D.querySelectorAll('[data-edithistory]').forEach(b=>b.onclick=()=>{let [i,j]=b.dataset.edithistory.split(':').map(Number);editHistory(i,j)});
@@ -274,7 +285,7 @@ ${MOSTRAR_DOCUMENTOS?`<section class="pane" data-pane="doc"><div class="paneHead
 let ctrlEdit=false,ctrlEditId='';const borradorNotas=new Map();
 const CTRL_UI={estadoXeral:{l:'Estado xeral',h:'Situación global do concello no proceso de control.'},
  kmzData:{l:'Data de preparación'},kmzFicheiro:{l:'Ficheiro KML/KMZ',ph:'p. ex. Concello_campo_linas.kmz',w:1},
- excelCompanheiro:{l:'Excel que acompaña ao KML'},tramos:{l:'Tramos preparados',u:'tramos',st:'1'},kmPreparados:{l:'Lonxitude preparada',u:'km'},
+ excelCompanheiro:{l:'Excel e instrucións para o compañeiro',h:'Preparado o Excel que acompaña ao KML/KMZ.'},tramos:{l:'Tramos preparados',u:'tramos',st:'1'},kmPreparados:{l:'Lonxitude preparada',u:'km'},
  tramosSeguros:{l:'Tramos seguros',u:'tramos',st:'1'},tramosAproximados:{l:'Tramos aproximados',u:'tramos',st:'1'},
  kmFeitos:{l:'Feitos',u:'km'},kmNonFeitos:{l:'Non feitos',u:'km'},
  actaEnviada:{l:'Acta enviada',h:'Enviada ao concello para asinar.'},actaAsinada:{l:'Acta recibida / asinada',h:'Recibida de volta asinada. Ao gardar actualiza tamén «Acta asinada» (firmada).'},
@@ -302,8 +313,9 @@ function notaCard(r,k){const campo=k==='notaCampo',ents=parseNotas(r[k]),b=borra
  <div class="noteFoot"><span class="hint" id="nh_${k}" role="alert"></span><button class="btn primary" type="submit">＋ Engadir nota</button></div>
 </form>
 <ol class="timeline">${ents.map(e=>`<li class="${e.data?'':'undated'}"><div class="tlDate">${e.data?safe(e.data):'Sen data · rexistro anterior'}${e.tipo?` <span class="tag">${safe(e.tipo)}</span>`:''}</div><div class="tlText">${safe(e.texto)}</div></li>`).join('')||'<li class="emptyTl muted">Aínda non hai notas.</li>'}</ol></section>`}
-function paneControl(r){
- const inp=([k,t,tipo])=>{const u=CTRL_UI[k]||{l:t},v=r[k]??'',id='c_'+k,lab=safe(u.l),help=u.h?`<small class="help">${safe(u.h)}</small>`:'',wc=u.w?' wide':'';
+// v3.3: fases do proceso como marcas. Non hai claves novas: marcar unha fase cambia `estadoXeral`.
+const FASES=['KMZ preparado','En campo','Campo pechado','Cargado na GDB'];
+function ctrlInp(r,k){const c=CAMPOS_CONTROL.find(x=>x[0]===k);if(!c)return '';const [,t,tipo]=c,u=CTRL_UI[k]||{l:t},v=r[k]??'',id='c_'+k,lab=safe(u.l),help=u.h?`<small class="help">${safe(u.h)}</small>`:'',wc=u.w?' wide':'';
   if(tipo==='e')return `<label class="field wide">${lab}<select id="${id}"><option value="">— Sen definir —</option>${ESTADOS_XERAIS.map(e=>`<option${e===r[k]?' selected':''}>${safe(e)}</option>`).join('')}</select>${help}</label>`;
   if(tipo==='sn')return `<label class="field">${lab}<select id="${id}"><option value="">— Sen indicar —</option><option${v==='Si'?' selected':''}>Si</option><option${v==='Non'?' selected':''}>Non</option></select>${help}</label>`;
   // ck = marca (tick): gárdase «Si» / «Non»
@@ -311,35 +323,49 @@ function paneControl(r){
   if(tipo==='a')return `<label class="field${wc}">${lab}<textarea id="${id}" rows="4">${safe(v)}</textarea>${help}</label>`;
   if(tipo==='n')return `<label class="field">${lab}<span class="unit"><input id="${id}" type="number" min="0" step="${u.st||'0.01'}" inputmode="decimal" value="${safe(v)}" placeholder="0"><em>${safe(u.u||'')}</em></span>${help}</label>`;
   if(tipo==='d')return `<label class="field">${lab}<input id="${id}" type="date" value="${safe(/^\d{4}-\d{2}-\d{2}$/.test(v)?v:'')}">${help}</label>`;
-  return `<label class="field${wc}">${lab}<input id="${id}" value="${safe(v)}"${u.ph?` placeholder="${safe(u.ph)}"`:''}>${help}</label>`};
- const g=ks=>ks.map(k=>CAMPOS_CONTROL.find(c=>c[0]===k)).filter(Boolean).map(inp).join('');
- const ex=estadoXeral(r),col=COR_XERAL[ex],kf=r.kmFeitos,kn=r.kmNonFeitos,sf=numOu0(kf),sn=numOu0(kn),tot=sf+sn,pct=tot?Math.round(sf/tot*100):0;
- const tr=r.tramos!==undefined&&r.tramos!==''&&r.tramos!==null?`${safe(r.tramos)}${(r.tramosSeguros??'')!==''||(r.tramosAproximados??'')!==''?` <small>(${safe(r.tramosSeguros??'—')} seguros · ${safe(r.tramosAproximados??'—')} aprox.)</small>`:''}`:'';
- const ed=ctrlEdit&&ctrlEditId===currentId;
- return `<section class="pane ctrlPane${ed?' editing':''}" data-pane="ctrl">
-<div class="ctrlRead">
- <div class="card estadoCard" style="--c:${col}"><div><span class="eyebrow">Estado xeral</span><div class="estadoVal"><i class="dot"></i>${safe(ex||'Sen definir')}</div></div><button class="btn" type="button" data-ctrl="editar">✎ Editar datos</button></div>
- <section class="card"><h3>Preparación do KMZ</h3><dl class="datos">${datoV3('Data de preparación',safe(isoAgl(r.kmzData)||r.kmzData||''))}${datoV3('Excel que acompaña',snV3(r.excelCompanheiro))}${datoV3('Ficheiro KML/KMZ',safe(r.kmzFicheiro||''),1)}${datoV3('Tramos preparados',tr)}${datoV3('Lonxitude preparada',numV3(r.kmPreparados,'km'))}</dl><p class="help">O PDF xeral do código de cores é común para todos os concellos.</p></section>
- <section class="card"><h3>Resultado de campo</h3><dl class="datos">${datoV3('Feitos',numV3(kf,'km'))}${datoV3('Non feitos',numV3(kn,'km'))}</dl>${tot?`<div class="prog" aria-label="Porcentaxe feita"><div class="bar"><i style="width:${pct}%"></i></div><small><span>${pct} % feito</span><span>${fmtKm(tot)} km revisados${numOu0(r.kmPreparados)?` de ${fmtKm(numOu0(r.kmPreparados))} preparados`:''}</span></small></div>`:''}</section>
- <section class="card"><h3>Acta</h3><dl class="datos">${datoV3('Acta enviada',tickV3(r.actaEnviada))}${datoV3('Acta recibida / asinada',tickV3(r.actaAsinada))}</dl><p class="help">Datos de orixe (non se modifican aquí): Acta «${safe(r.acta||'—')}» · Acta asinada «${safe(r.firmada||'—')}» · Asinada por «${safe(r.asinadaPor||'—')}».</p></section>
-</div>
-<form class="ctrlForm" novalidate>
- <fieldset class="card"><legend>Estado</legend><div class="fields">${g(['estadoXeral'])}</div></fieldset>
- <fieldset class="card"><legend>Preparación do KMZ</legend><div class="fields">${g(['kmzData','excelCompanheiro','kmzFicheiro','tramos','kmPreparados','tramosSeguros','tramosAproximados'])}</div><small class="help">Os tramos seguros + aproximados deberían sumar os tramos preparados. O PDF xeral de cores é común.</small></fieldset>
- <fieldset class="card"><legend>Resultado de campo</legend><div class="fields">${g(['kmFeitos','kmNonFeitos'])}</div><small class="help">km feitos + non feitos non deberían superar os km preparados.</small></fieldset>
- <fieldset class="card"><legend>Acta</legend><div class="fields">${g(['actaEnviada','actaAsinada'])}</div><small class="help">Datos de orixe (só lectura): Acta «${safe(r.acta||'—')}» · Acta asinada «${safe(r.firmada||'—')}» · Asinada por «${safe(r.asinadaPor||'—')}».</small></fieldset>
- <fieldset class="card"><legend>Notas · texto completo (para corrixir)</legend><div class="fields">${g(['notaCampo','notaChamadas'])}</div></fieldset>
- <div class="ctrlBar"><div id="ctrlAvisos" class="avisos" role="status" aria-live="polite"></div><div class="ctrlBarRow"><span class="flag c">Sen cambios</span><span class="flag d">● Cambios sen gardar</span><button type="button" class="btn" data-ctrl="cancelar">Cancelar</button><button type="button" class="btn primary" data-ctrl="gardar">✓ Gardar</button></div></div>
+  return `<label class="field${wc}">${lab}<input id="${id}" value="${safe(v)}"${u.ph?` placeholder="${safe(u.ph)}"`:''}>${help}</label>`}
+const ctrlG=(r,ks)=>ks.map(k=>ctrlInp(r,k)).join('');
+function faseOn(ex,f){const i=ESTADOS_XERAIS.indexOf(ex);return i>=0&&i>=ESTADOS_XERAIS.indexOf(f)}
+function barraGardar(){return `<div class="ctrlBar"><div class="avisos" data-avisos role="status" aria-live="polite"></div><div class="ctrlBarRow"><span class="flag c">Sen cambios</span><span class="flag d">● Cambios sen gardar</span><button type="button" class="btn" data-ctrl="cancelar">Cancelar</button><button type="button" class="btn primary" data-ctrl="gardar">✓ Gardar</button></div></div>`}
+// Separador «Control»: SÓ marcas + estado xeral, para ver dunha ollada en que situación está o concello
+function paneControl(r){
+ const ex=estadoXeral(r),col=COR_XERAL[ex];
+ return `<section class="pane ctrlPane" data-pane="ctrl"><form class="ctrlForm" novalidate>
+ <div class="card estadoCard" style="--c:${col}"><div class="fields">${ctrlG(r,['estadoXeral'])}</div></div>
+ <fieldset class="card"><legend>Fases do traballo</legend><div class="ticks">${FASES.map((f,i)=>`<label class="tick"><input type="checkbox" id="cf_${i}" data-fase="${safe(f)}"${faseOn(ex,f)?' checked':''}><span><b>${safe(f)}</b></span></label>`).join('')}</div><small class="help">Marcar ou desmarcar unha fase cambia o «Estado xeral». Os km e os datos do KMZ están no separador «Visitas».</small></fieldset>
+ <fieldset class="card"><legend>Material para o compañeiro de campo</legend><div class="ticks">${ctrlG(r,['excelCompanheiro'])}</div></fieldset>
+ <fieldset class="card"><legend>Acta</legend><div class="ticks">${ctrlG(r,['actaEnviada','actaAsinada'])}</div><small class="help">Datos de orixe (só lectura): Acta «${safe(r.acta||'—')}» · Acta asinada «${safe(r.firmada||'—')}» · Asinada por «${safe(r.asinadaPor||'—')}».</small></fieldset>
+ ${barraGardar()}
 </form>
-${notaCard(r,'notaCampo')}${notaCard(r,'notaChamadas')}
 <p class="ctrlNote">Só se gardan os campos que cambiaches; o resto da ficha non se toca. Se outro dispositivo cambiou a ficha, avísase e non se sobrescribe.</p></section>`}
+// Separador «Visitas»: KMZ e km (preparados / feitos / non feitos), notas de campo con data e historial de visitas
+function paneVisitas(r,visits){
+ const kf=r.kmFeitos,kn=r.kmNonFeitos,sf=numOu0(kf),sn=numOu0(kn),tot=sf+sn,pct=tot?Math.round(sf/tot*100):0;
+ return `<section class="pane" data-pane="vis">
+ <section class="card campoCard"><div class="cardHead"><h3>KMZ e resultado de campo</h3></div>
+  ${tot?`<div class="prog" aria-label="Porcentaxe feita"><div class="bar"><i style="width:${pct}%"></i></div><small><span>${pct} % feito</span><span>${fmtKm(tot)} km revisados${numOu0(r.kmPreparados)?` de ${fmtKm(numOu0(r.kmPreparados))} preparados`:''}</span></small></div>`:''}
+  <h4 class="subH">Preparación do KMZ</h4><div class="fields">${ctrlG(r,['kmzData','kmzFicheiro','tramos','kmPreparados','tramosSeguros','tramosAproximados'])}</div><small class="help">Os tramos seguros + aproximados deberían sumar os tramos preparados. O PDF xeral de cores é común.</small>
+  <h4 class="subH">Resultado de campo</h4><div class="fields">${ctrlG(r,['kmFeitos','kmNonFeitos'])}</div><small class="help">km feitos + non feitos non deberían superar os km preparados.</small>
+  ${barraGardar()}
+ </section>
+ ${notaCard(r,'notaCampo')}
+ <section class="card"><div class="paneHead"><h3>Historial de visitas (${(r.visits||[]).length})</h3><button class="btn" data-action="visit">+ Visita</button></div>${visits}</section>
+ <details class="card notaFull"><summary>Texto completo das notas de campo (para corrixir)</summary><div class="fields">${ctrlG(r,['notaCampo'])}</div>${barraGardar()}</details>
+</section>`}
+// Separador «Chamadas»: notas de chamadas e correos con data, e contactos co seu historial
+function paneChamadas(r,contacts){
+ return `<section class="pane" data-pane="cham">
+ ${notaCard(r,'notaChamadas')}
+ <section class="card"><div class="paneHead"><h3>Contactos e historial</h3><button class="btn" data-action="contact">+ Contacto</button></div>${contacts}</section>
+ <details class="card notaFull"><summary>Texto completo das chamadas e correos (para corrixir)</summary><div class="fields">${ctrlG(r,['notaChamadas'])}</div>${barraGardar()}</details>
+</section>`}
 function validarControl(){const num=k=>{const e=$('c_'+k);return e&&e.value.trim()!==''?Number(e.value.replace(',','.')):null},av=[];
  ['tramos','kmPreparados','tramosSeguros','tramosAproximados','kmFeitos','kmNonFeitos'].forEach(k=>{const e=$('c_'+k),v=num(k),bad=!!e&&((v!==null&&!(v>=0))||(e.validity&&e.validity.badInput));if(e)e.classList.toggle('inv',bad);if(bad)av.push(['erro',`«${CTRL_UI[k].l}» ten que ser un número igual ou maior ca 0.`])});
  const t=num('tramos'),s=num('tramosSeguros'),a=num('tramosAproximados');if(t!==null&&(s||0)+(a||0)>t)av.push(['aviso',`Seguros + aproximados (${(s||0)+(a||0)}) superan os tramos preparados (${t}).`]);
  const p=num('kmPreparados'),f=num('kmFeitos'),n=num('kmNonFeitos');if(p!==null&&(f||0)+(n||0)>p*1.05)av.push(['aviso',`km feitos + non feitos (${fmtKm((f||0)+(n||0))}) superan os km preparados (${fmtKm(p)}).`]);
  const ex=$('c_estadoXeral')?.value||'';if((ex==='Campo pechado'||ex==='Cargado na GDB')&&f===null)av.push(['aviso',`Estado «${ex}» sen km feitos rexistrados.`]);
  if((ex==='KMZ preparado'||ex==='En campo')&&!($('c_kmzFicheiro')?.value||'').trim())av.push(['aviso','Falta indicar o ficheiro KML/KMZ.']);
- const box=$('ctrlAvisos');if(box)box.innerHTML=av.map(([c,m])=>`<div class="aviso ${c}">${c==='erro'?'⛔':'⚠'} ${safe(m)}</div>`).join('')}
+ const html=av.map(([c,m])=>`<div class="aviso ${c}">${c==='erro'?'⛔':'⚠'} ${safe(m)}</div>`).join('');document.querySelectorAll('#detail [data-avisos]').forEach(b=>b.innerHTML=html)}
 function gardarBorrador(k){const x=$('n_'+k)?.value||'',d=$('nd_'+k)?.value||'',t=$('nt_'+k)?.value||'',v=!!$('nv_'+k)?.checked,key=currentId+'|'+k;if(x||t||v||(d&&d!==today()))borradorNotas.set(key,{x,d,t,v});else borradorNotas.delete(key)}
 async function engadirNota(k){const h=$('nh_'+k),tx=$('n_'+k),dEl=$('nd_'+k),d=dEl.value,txt=tx.value.trim().replace(/\s*\n+\s*/g,' / ');h.textContent='';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){h.textContent='Indica unha data válida.';dEl.focus();return}
@@ -351,13 +377,19 @@ async function engadirNota(k){const h=$('nh_'+k),tx=$('n_'+k),dEl=$('nd_'+k),d=d
  const ok=await saveForm(extra);
  if(ok){toast(extra.visits?'Nota e visita gardadas':'Nota engadida e gardada');return}
  borradorNotas.set(key,bk);if(document.body.contains(ta))ta.value=prev;else renderDetail()}
-function bindControl(){const P=document.querySelector('#detail [data-pane="ctrl"]');if(!P)return;
- const f=P.querySelector('.ctrlForm');f.addEventListener('submit',e=>e.preventDefault());f.addEventListener('input',validarControl);f.addEventListener('change',validarControl);
- P.querySelector('[data-ctrl="editar"]').onclick=()=>{ctrlEdit=true;ctrlEditId=currentId;P.classList.add('editing');validarControl();if(isMobile()&&$('sheet').dataset.state!=='full')sheet('full');$('detail').scrollTop=0;$('c_estadoXeral')?.focus({preventScroll:true})};
- P.querySelector('[data-ctrl="cancelar"]').onclick=()=>{if(dirty&&!confirm('Descartar os cambios sen gardar?'))return;dirty=false;setSync('ok');ctrlEdit=false;['notaCampo','notaChamadas'].forEach(k=>borradorNotas.delete(currentId+'|'+k));renderDetail()};
- P.querySelector('[data-ctrl="gardar"]').onclick=()=>saveForm();
- P.querySelectorAll('.noteAdd').forEach(fm=>{const k=fm.dataset.nota;fm.addEventListener('submit',e=>{e.preventDefault();engadirNota(k)});fm.addEventListener('input',()=>{gardarBorrador(k);markDirty()});fm.addEventListener('change',()=>gardarBorrador(k))});
- if(P.classList.contains('editing'))validarControl()}
+// v3.3: os formularios xa non teñen modo lectura/edición: as marcas e os campos edítanse directamente.
+// A barra «Gardar / Cancelar» aparece só cando hai cambios sen gardar.
+function syncFases(){const ex=$('c_estadoXeral')?.value||'';FASES.forEach((f,i)=>{const c=$('cf_'+i);if(c)c.checked=faseOn(ex,f)})}
+function bindFicha(){const D=$('detail');if(!D.querySelector('[data-pane="ctrl"]'))return;
+ D.querySelectorAll('form.ctrlForm').forEach(f=>f.addEventListener('submit',e=>e.preventDefault()));
+ if(!D.dataset.v33){D.dataset.v33='1';const vc=e=>{if(e.target.id?.startsWith('c_'))validarControl()};D.addEventListener('input',vc);D.addEventListener('change',vc)} // #detail persiste: escoitar só unha vez
+ const sel=$('c_estadoXeral'),r0=base(rows.get(currentId)),previo=ESTADOS_XERAIS.indexOf(r0.estadoXeral)<ESTADOS_XERAIS.indexOf(FASES[0])?(estadoXeral(r0)):'';
+ if(sel)sel.addEventListener('change',syncFases);
+ FASES.forEach((f,i)=>{const c=$('cf_'+i);if(!c)return;c.onchange=()=>{sel.value=c.checked?f:(i>0?FASES[i-1]:previo);syncFases();markDirty();validarControl()}});
+ D.querySelectorAll('[data-ctrl="cancelar"]').forEach(b=>b.onclick=()=>{if(dirty&&!confirm('Descartar os cambios sen gardar?'))return;dirty=false;setSync('ok');ctrlEdit=false;['notaCampo','notaChamadas'].forEach(k=>borradorNotas.delete(currentId+'|'+k));renderDetail()});
+ D.querySelectorAll('[data-ctrl="gardar"]').forEach(b=>b.onclick=()=>saveForm());
+ D.querySelectorAll('.noteAdd').forEach(fm=>{const k=fm.dataset.nota;fm.addEventListener('submit',e=>{e.preventDefault();engadirNota(k)});fm.addEventListener('input',()=>{gardarBorrador(k);markDirty()});fm.addEventListener('change',()=>gardarBorrador(k))});
+ if(dirty)validarControl()}
 
 // Le os campos de control e devolve SÓ os que cambiaron respecto ao valor actual (así non se crean claves baleiras)
 function controlPatch(r){const out={};for(const [k,,tipo] of CAMPOS_CONTROL){const el=$('c_'+k);if(!el)continue;
