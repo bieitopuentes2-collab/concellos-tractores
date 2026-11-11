@@ -44,16 +44,15 @@ function stopForBreakdown(r){
  return decisive.test(text);
 }
 // CASOS ESPECIAIS CODIFICADOS (mantidos en v2 por seguridade):
-//  · Crecente = só apero (0 tractores) · Negreira = estado forzado «tractor non localizado» (ignora o selector)
+//  · Crecente = só apero (0 tractores) · Negreira = por defecto «tractor non localizado» se non hai estadoVisita; o selector gárdase e respéctase (v3.4, petición de Bieito).
 //  · Aranga sen visitas = «fotos» · Poio = 2 tractores.
 // Afectan só á cor/etiqueta de SEGUIMENTO e ao reconto de tractores; NON afectan ao estado xeral de control.
-// Para quitalos habería que gardar eses estados como datos (estadoVisita/notas) e revisalo con Bieito.
 function isCrecente(r){return slug(r.name)==='CRECENTE'}
 function isNegreira(r){return slug(r.name)==='NEGREIRA'}
 function isAranga(r){return slug(r.name)==='ARANGA'}
 function hasPlate(r){return (r.machines||[]).some(m=>String(m.matricula||'').trim().length>2)}
 // A matrícula documentada é a referencia para distinguir asignacións de rexistros pendentes.
-// Negreira ten tractor, pero non se puido localizar na visita; Crecente só dispón de apero.
+// Negreira ten tractor (por defecto «non-localizado» ata que se garde outro estado); Crecente só dispón de apero.
 function noTractor(r){return !isNegreira(r)&&!isCrecente(r)&&!hasPlate(r)}
 function tractorCount(r){if(isCrecente(r)||noTractor(r))return 0;if(isNegreira(r))return 1;if(slug(r.name)==='POIO')return 2;return 1}
 function inspectState(r){
@@ -61,12 +60,13 @@ function inspectState(r){
  const broken=manual==='avariada-confirmada'||(!['operativa','reparada','en-reparacion'].includes(manual)&&stopForBreakdown(r));
  // A visita ao concello non acredita por si soa a comprobación física da máquina.
  let visit=String(r.estadoVisita||'').toLowerCase();
- if(isNegreira(r))visit='non-localizado';
+ // v3.4: Negreira usa o valor gardado en estadoVisita; se non hai, queda o histórico «non-localizado».
+ if(isNegreira(r)&&!['pendente','contactado','fotos','visitado','non-localizado'].includes(visit))visit='non-localizado';
  else if(isAranga(r)&&!(r.visits||[]).length)visit='fotos';
  else if(noTractor(r))visit='sen-tractor';
  else if(isCrecente(r))visit='visitado';
  else if(!visit||visit==='pendente'||visit==='contactado')visit='visitado';
- let state=isCrecente(r)?'so-apero':noTractor(r)?'sen-tractor':isNegreira(r)?'non-localizado':broken?'avaria':visit==='fotos'?'fotos':visit==='visitado'?'visitado':visit==='contactado'?'contactado':'pendente';
+ let state=isCrecente(r)?'so-apero':noTractor(r)?'sen-tractor':visit==='non-localizado'?'non-localizado':broken?'avaria':visit==='fotos'?'fotos':visit==='visitado'?'visitado':visit==='contactado'?'contactado':'pendente';
  return {state,visit,broken};
 }
 function kpis(){let a=all(),nvisit=a.filter(r=>inspectState(r).visit==='visitado').length,nfoto=a.filter(r=>inspectState(r).visit==='fotos').length,nbroken=a.filter(r=>inspectState(r).state==='avaria').length,m=a.reduce((s,r)=>s+tractorCount(r),0),nwithout=a.filter(noTractor).length;let stats=[['Concellos',a.length],['Tractores identificados ou declarados',m],['Visitados',nvisit],['Fotos sen visita',nfoto],['Paradas por avaría rexistradas',nbroken],['Sen tractor na relación',nwithout]];
@@ -83,7 +83,7 @@ function kpisControl(a){const n=e=>a.filter(r=>estadoXeral(r)===e).length,sum=k=
 function matchFilter(r){let q=slug($('search').value);let ok=!q||slug([r.name,r.prov,r.empresa,...(r.machines||[]).map(m=>[m.matricula,m.marca,m.modelo]),r.notaSeaga].join(' ')).includes(q);return ok&&(!$('province').value||r.prov===$('province').value)&&(!$('filter').value||inspectState(r).state===$('filter').value)&&(!$('filterXeral')?.value||($('filterXeral').value==='__sen'?!estadoXeral(r):estadoXeral(r)===$('filterXeral').value))}
 function renderList(){let a=all().filter(matchFilter),ctl=modoCor==='control';$('list').innerHTML=a.map(r=>{const st=inspectState(r),ex=estadoXeral(r),lbl=ctl?(ex||'Sen definir'):labels[st.state],bc=ctl?COR_XERAL[ex]:colors[st.state],kp=numOu0(r.kmPreparados),kf=numOu0(r.kmFeitos);
  const nums=(kp?`<span><b>${fmtKm(kp)}</b> km prep.</span>`:'')+(kf?`<span><b>${fmtKm(kf)}</b> km feitos</span>`:'');
- return `<button class="item ${r.id===currentId?'active':''}" data-id="${safe(r.id)}" style="border-left-color:${corFicha(r)}"><span class="itemMain"><strong class="itemName">${safe(r.name)}</strong><span class="itemSub">${safe(r.prov)} · ${tractorCount(r)} tractor(es)${isCrecente(r)?' · só apero':isNegreira(r)?' · tractor non localizado':''}${r.actaEnviada==='Si'||r.actaAsinada==='Si'?` <span class="actaIcos">${r.actaEnviada==='Si'?'<i title="Acta enviada">✉</i>':''}${r.actaAsinada==='Si'?'<i title="Acta asinada">✍</i>':''}</span>`:''}</span>${nums?`<span class="itemNums">${nums}</span>`:''}</span><span class="badge" style="--c:${bc}">${safe(lbl)}</span></button>`}).join('')||'<div class="pad muted">Sen resultados cos filtros actuais.</div>';$('list').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>openRecord(b.dataset.id)));
+ return `<button class="item ${r.id===currentId?'active':''}" data-id="${safe(r.id)}" style="border-left-color:${corFicha(r)}"><span class="itemMain"><strong class="itemName">${safe(r.name)}</strong><span class="itemSub">${safe(r.prov)} · ${tractorCount(r)} tractor(es)${isCrecente(r)?' · só apero':st.state==='non-localizado'?' · tractor non localizado':''}${r.actaEnviada==='Si'||r.actaAsinada==='Si'?` <span class="actaIcos">${r.actaEnviada==='Si'?'<i title="Acta enviada">✉</i>':''}${r.actaAsinada==='Si'?'<i title="Acta asinada">✍</i>':''}</span>`:''}</span>${nums?`<span class="itemNums">${nums}</span>`:''}</span><span class="badge" style="--c:${bc}">${safe(lbl)}</span></button>`}).join('')||'<div class="pad muted">Sen resultados cos filtros actuais.</div>';$('list').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>openRecord(b.dataset.id)));
  const fv=$('filterXeral')?.value||'';document.querySelectorAll('#kpis .ctrlChip').forEach(c=>{const on=c.dataset.xeral===fv;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)})}
 
 // ===== TICKET 02 · Mapa cartográfico (IGN/CNIG, sen API key) =====
@@ -259,7 +259,7 @@ function renderDetail(){
  $('detailTitle').textContent=r.name;$('statusTag').textContent=labels[s.state];$('statusTag').style.background=colors[s.state]+'25';$('statusTag').style.borderColor=colors[s.state];
  $('detailMeta').innerHTML=`<span class="sep">${safe(r.prov||'')}</span><span class="sep">${safe(r.empresa||'Empresa non indicada')}</span><span class="sep">${tractorCount(r)} tractor(es)</span><span class="badge" style="--c:${COR_XERAL[estadoXeral(r)]}" title="Estado xeral">${safe(estadoXeral(r)||'Estado xeral sen definir')}</span><span class="actaIcos" title="Acta enviada / asinada"><i>✉ ${r.actaEnviada==='Si'?'✓':'—'}</i><i>✍ ${r.actaAsinada==='Si'?'✓':'—'}</i></span>`;
  renderTabs(r);$('actionbar').classList.remove('hidden');
- let visits=(r.visits||[]).map((v,i)=>`<div class="entry"><strong>${safe(v.fecha||'Sen data')}</strong> · ${safe(v.lugar||'')}<div>${safe(v.traballo||'')}</div><div>${safe(v.observacions||'')}</div><div class="mini">Horas: ${safe(v.horas||'—')}</div><button class="btn" data-editvisit="${i}">Editar</button></div>`).join('')||'<p class="muted">Non hai visitas gardadas.</p>';
+ let visits=(r.visits||[]).map((v,i)=>`<div class="entry visitEntry"><div class="visitHead"><strong>${safe(v.fecha||'Sen data')}</strong>${horasBadge(v.horas)}<span class="visitLugar">${safe(v.lugar||'')}</span></div><div>${safe(v.traballo||'')}</div><div>${safe(v.observacions||'')}</div><button class="btn" data-editvisit="${i}">Editar</button></div>`).join('')||'<p class="muted">Non hai visitas gardadas.</p>';
  let machines=(r.machines||[]).map((m,i)=>`<div class="entry"><strong>${safe([m.marca,m.modelo].filter(Boolean).join(' ')||'Máquina sen identificar')}</strong><div>${safe(m.matricula||'Matrícula non indicada')} · ${safe(m.apeiro||'')}</div><div class="mini">Inicio: ${safe(m.inicio||'—')} · Fin: ${safe(m.fin||'—')}</div><button class="btn" data-editmachine="${i}">Editar</button> <button class="btn" data-docmachine="${i}">${MOSTRAR_DOCUMENTOS?'Documentación':'Traballos'}</button></div>`).join('')||'<p class="muted">Sen maquinaria rexistrada.</p>';
  let contacts=(r.contacts||[]).map((c,i)=>`<div class="entry"><strong>${safe(c.contacto||'Contacto')}</strong><button class="btn" data-editcontact="${i}">Editar contacto</button><button class="btn" data-addhistory="${i}">+ Anotación</button><div class="mini">${(c.historial||[]).map((h,j)=>`<div style="margin:7px 0">${safe(h.fecha||'')} · ${safe(h.resumo||'')} <button class="btn" data-edithistory="${i}:${j}">Editar</button></div>`).join('')}</div></div>`).join('')||'<p class="muted">Sen contactos</p>';
  $('detail').innerHTML=`${paneControl(r)}<section class="pane" data-pane="info"><div class="fields"><label class="field">Estado da comprobación<select id="fVisita"><option value="pendente">Pendente</option><option value="contactado">Contactado</option><option value="non-localizado">Concello visitado, tractor non localizado</option><option value="fotos">Fotos recibidas</option><option value="visitado">Visita presencial</option></select></label><label class="field">Estado mecánico<select id="fMecanica"><option value="sen-datos">Sen datos actualizados</option><option value="operativa">Operativa</option><option value="avariada-confirmada">Parado por avaría (confirmado)</option><option value="en-reparacion">En reparación</option><option value="reparada">Reparada</option><option value="parada">Parada por outra causa</option></select></label><label class="field wide">Observacións xerais<textarea id="fNotas"></textarea></label><label class="field wide">Información documental<textarea id="fDoc"></textarea></label></div><div class="block"><h3>Información de orixe e acta de entrega</h3><div class="fields"><label class="field">Empresa<input id="fEmpresa" value="${safe(r.empresa||'')}" placeholder="Empresa"></label><label class="field">Apeiro<input id="fApeiro" value="${safe(r.apeiro||'')}" placeholder="Apeiro asignado"></label><label class="field">Acta<input id="fActa" value="${safe(r.acta||'')}" placeholder="Si / Non / Pendente"></label><label class="field">Acta asinada (Si / Non / Pendente)<input id="fFirmada" value="${safe(r.firmada||'')}" placeholder="Si / Non / Pendente"></label><label class="field wide">Asinada por (nome e cargo)<input id="fAsinadaPor" value="${safe(r.asinadaPor||'')}" placeholder="Nome e cargo"></label></div></div><p class="muted tiny">Os contactos e o seu historial están agora no separador «Chamadas».</p><p class="muted">Modifica os campos e pulsa «Gardar». Os cambios sincronízanse en todos os dispositivos.</p></section>
@@ -291,6 +291,14 @@ const CTRL_UI={estadoXeral:{l:'Estado xeral',h:'Situación global do concello no
  actaEnviada:{l:'Acta enviada',h:'Enviada ao concello para asinar.'},actaAsinada:{l:'Acta recibida / asinada',h:'Recibida de volta asinada. Ao gardar actualiza tamén «Acta asinada» (firmada).'},
  notaCampo:{l:'Notas de campo e visitas',h:'Unha entrada por liña. As liñas que comezan por DD/MM/AAAA amósanse coa súa data.',w:1},
  notaChamadas:{l:'Notas de chamadas e correos',h:'Unha entrada por liña, igual ca nas notas de campo.',w:1}};
+// v3.4 · Horas do tractor nas visitas (clave existente visits[].horas, texto tipo «5807 h»)
+// Normaliza o que se escribe: «5807» ou «5807,5» → «5807 h» / «5807,5 h»; texto doutro tipo gárdase tal cal.
+function horasNorm(v){const t=String(v??'').trim();if(!t)return '';const m=/^(\d+(?:[.,]\d+)?)\s*(h|horas?)?\.?$/i.exec(t);return m?m[1].replace('.',',')+' h':t}
+function horasTxt(v){const t=String(v??'').trim();return t&&t!=='-'&&t!=='—'?horasNorm(t):''}
+function horasBadge(v){const h=horasTxt(v);return h?`<span class="hBadge" title="Horas do tractor na visita">⏱ ${safe(h)}</span>`:'<span class="hBadge nd" title="Sen horas rexistradas">— h</span>'}
+function fechaClave(f){const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(f||''));return m?m[3]+m[2].padStart(2,'0')+m[1].padStart(2,'0'):''}
+// Visita máis recente (por data; a igual data, a última engadida) que ten horas
+function ultimasHoras(vs){let best=null;(vs||[]).forEach((v,i)=>{if(!horasTxt(v.horas))return;const k=fechaClave(v.fecha)+'|'+String(i).padStart(5,'0');if(!best||k>best.k)best={k,v}});return best&&best.v}
 function isoAgl(d){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d||''));return m?`${m[3]}/${m[2]}/${m[1]}`:''}
 function nomeBonito(s){return String(s||'').toLowerCase().replace(/(^|[\s(\-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/ (De|Do|Da|Dos|Das|E) /g,m=>m.toLowerCase())}
 const RE_NOTA=/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(?:[·:\-–]\s*)?(.*)$/;
@@ -309,7 +317,8 @@ function notaCard(r,k){const campo=k==='notaCampo',ents=parseNotas(r[k]),b=borra
 <form class="noteAdd" data-nota="${k}" novalidate>
  <div class="noteRow"><label class="field">Data<input type="date" id="nd_${k}" value="${safe(b.d||hoxe)}" max="${hoxe}" required></label>${campo?'':`<label class="field">Tipo (opcional)<select id="nt_${k}"><option value="">—</option><option${b.t==='Chamada'?' selected':''}>Chamada</option><option${b.t==='Correo'?' selected':''}>Correo</option></select></label>`}</div>
  <label class="field">Anotación<textarea id="n_${k}" rows="2" placeholder="${campo?'Que se viu ou se fixo na visita…':'Con quen se falou, que se pediu, que responderon…'}">${safe(b.x||'')}</textarea></label>
- ${campo?`<label class="check"><input type="checkbox" id="nv_${k}"${b.v?' checked':''}> Rexistrar tamén no historial de visitas</label>`:''}
+ ${campo?`<label class="check"><input type="checkbox" id="nv_${k}"${b.v?' checked':''}> Rexistrar tamén no historial de visitas</label>
+ <label class="field horasField"${b.v?'':' hidden'} id="nhw_${k}">Horas do tractor (h) <small class="help">opcional · as que marca o contador nese momento</small><span class="unit"><input id="nhr_${k}" type="text" inputmode="decimal" autocomplete="off" placeholder="p. ex. 5807" value="${safe(b.h||'')}"><em>h</em></span></label>`:''}
  <div class="noteFoot"><span class="hint" id="nh_${k}" role="alert"></span><button class="btn primary" type="submit">＋ Engadir nota</button></div>
 </form>
 <ol class="timeline">${ents.map(e=>`<li class="${e.data?'':'undated'}"><div class="tlDate">${e.data?safe(e.data):'Sen data · rexistro anterior'}${e.tipo?` <span class="tag">${safe(e.tipo)}</span>`:''}</div><div class="tlText">${safe(e.texto)}</div></li>`).join('')||'<li class="emptyTl muted">Aínda non hai notas.</li>'}</ol></section>`}
@@ -349,7 +358,7 @@ function paneVisitas(r,visits){
   ${barraGardar()}
  </section>
  ${notaCard(r,'notaCampo')}
- <section class="card"><div class="paneHead"><h3>Historial de visitas (${(r.visits||[]).length})</h3><button class="btn" data-action="visit">+ Visita</button></div>${visits}</section>
+ <section class="card visitsCard"><div class="paneHead"><h3>Historial de visitas (${(r.visits||[]).length})</h3><button class="btn" data-action="visit">+ Visita</button></div>${(()=>{const u=ultimasHoras(r.visits);return u?`<div class="ultHoras"><span>Horas última visita</span><b>${safe(horasTxt(u.horas))}</b><small>${safe(u.fecha||'sen data')}</small></div>`:''})()}${visits}</section>
  <details class="card notaFull"><summary>Texto completo das notas de campo (para corrixir)</summary><div class="fields">${ctrlG(r,['notaCampo'])}</div>${barraGardar()}</details>
 </section>`}
 // Separador «Chamadas»: notas de chamadas e correos con data, e contactos co seu historial
@@ -366,14 +375,15 @@ function validarControl(){const num=k=>{const e=$('c_'+k);return e&&e.value.trim
  const ex=$('c_estadoXeral')?.value||'';if((ex==='Campo pechado'||ex==='Cargado na GDB')&&f===null)av.push(['aviso',`Estado «${ex}» sen km feitos rexistrados.`]);
  if((ex==='KMZ preparado'||ex==='En campo')&&!($('c_kmzFicheiro')?.value||'').trim())av.push(['aviso','Falta indicar o ficheiro KML/KMZ.']);
  const html=av.map(([c,m])=>`<div class="aviso ${c}">${c==='erro'?'⛔':'⚠'} ${safe(m)}</div>`).join('');document.querySelectorAll('#detail [data-avisos]').forEach(b=>b.innerHTML=html)}
-function gardarBorrador(k){const x=$('n_'+k)?.value||'',d=$('nd_'+k)?.value||'',t=$('nt_'+k)?.value||'',v=!!$('nv_'+k)?.checked,key=currentId+'|'+k;if(x||t||v||(d&&d!==today()))borradorNotas.set(key,{x,d,t,v});else borradorNotas.delete(key)}
+function gardarBorrador(k){const x=$('n_'+k)?.value||'',d=$('nd_'+k)?.value||'',t=$('nt_'+k)?.value||'',v=!!$('nv_'+k)?.checked,h=$('nhr_'+k)?.value||'',key=currentId+'|'+k;if(x||t||v||h||(d&&d!==today()))borradorNotas.set(key,{x,d,t,v,h});else borradorNotas.delete(key)}
 async function engadirNota(k){const h=$('nh_'+k),tx=$('n_'+k),dEl=$('nd_'+k),d=dEl.value,txt=tx.value.trim().replace(/\s*\n+\s*/g,' / ');h.textContent='';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){h.textContent='Indica unha data válida.';dEl.focus();return}
  if(d>today()){h.textContent='A data non pode ser posterior a hoxe.';dEl.focus();return}
  if(!txt){h.textContent='Escribe a anotación antes de engadila.';tx.focus();return}
+ const hr=$('nhr_'+k);if(hr&&$('nv_'+k)?.checked&&hr.value.trim()&&!/^\d+(?:[.,]\d+)?\s*h?$/i.test(hr.value.trim())){h.textContent='As horas do tractor teñen que ser un número (p. ex. 5807 ou 5807,5).';hr.focus();return}
  const tipo=$('nt_'+k)?.value||'',linha=`${isoAgl(d)} · ${tipo?tipo+': ':''}${txt}`,ta=$('c_'+k),prev=(ta.value||'').trim();ta.value=prev?linha+'\n'+prev:linha;
- const extra={};if($('nv_'+k)?.checked){const r=base(rows.get(currentId));extra.visits=[...clone(r.visits||[]),{fecha:isoAgl(d),lugar:'Concello de '+nomeBonito(r.name),horas:'',traballo:'',observacions:txt}];extra.estadoVisita='visitado'}
- const key=currentId+'|'+k,bk=borradorNotas.get(key)||{x:tx.value,d,t:tipo,v:!!$('nv_'+k)?.checked};borradorNotas.delete(key);dirty=true;
+ const extra={};if($('nv_'+k)?.checked){const r=base(rows.get(currentId));extra.visits=[...clone(r.visits||[]),{fecha:isoAgl(d),lugar:'Concello de '+nomeBonito(r.name),horas:horasNorm($('nhr_'+k)?.value),traballo:'',observacions:txt}];extra.estadoVisita='visitado'}
+ const key=currentId+'|'+k,bk=borradorNotas.get(key)||{x:tx.value,d,t:tipo,v:!!$('nv_'+k)?.checked,h:$('nhr_'+k)?.value||''};borradorNotas.delete(key);dirty=true;
  const ok=await saveForm(extra);
  if(ok){toast(extra.visits?'Nota e visita gardadas':'Nota engadida e gardada');return}
  borradorNotas.set(key,bk);if(document.body.contains(ta))ta.value=prev;else renderDetail()}
@@ -388,7 +398,7 @@ function bindFicha(){const D=$('detail');if(!D.querySelector('[data-pane="ctrl"]
  FASES.forEach((f,i)=>{const c=$('cf_'+i);if(!c)return;c.onchange=()=>{sel.value=c.checked?f:(i>0?FASES[i-1]:previo);syncFases();markDirty();validarControl()}});
  D.querySelectorAll('[data-ctrl="cancelar"]').forEach(b=>b.onclick=()=>{if(dirty&&!confirm('Descartar os cambios sen gardar?'))return;dirty=false;setSync('ok');ctrlEdit=false;['notaCampo','notaChamadas'].forEach(k=>borradorNotas.delete(currentId+'|'+k));renderDetail()});
  D.querySelectorAll('[data-ctrl="gardar"]').forEach(b=>b.onclick=()=>saveForm());
- D.querySelectorAll('.noteAdd').forEach(fm=>{const k=fm.dataset.nota;fm.addEventListener('submit',e=>{e.preventDefault();engadirNota(k)});fm.addEventListener('input',()=>{gardarBorrador(k);markDirty()});fm.addEventListener('change',()=>gardarBorrador(k))});
+ D.querySelectorAll('.noteAdd').forEach(fm=>{const k=fm.dataset.nota,nv=$('nv_'+k),hw=$('nhw_'+k);if(nv&&hw)nv.addEventListener('change',()=>{hw.hidden=!nv.checked;if(nv.checked)$('nhr_'+k)?.focus({preventScroll:true})});fm.addEventListener('submit',e=>{e.preventDefault();engadirNota(k)});fm.addEventListener('input',()=>{gardarBorrador(k);markDirty()});fm.addEventListener('change',()=>gardarBorrador(k))});
  if(dirty)validarControl()}
 
 // Le os campos de control e devolve SÓ os que cambiaron respecto ao valor actual (así non se crean claves baleiras)
@@ -468,7 +478,7 @@ async function saveForm(extra){const id=currentId;try{const r0=base(rows.get(id)
 function modal(html,wide){$('modalRoot').innerHTML=`<div class="overlay" id="overlay"><div class="modal${wide?' wide':''}">${html}</div></div>`;$('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal()});$('modalRoot').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);$('modalRoot').querySelectorAll('input[name=localizacion],input[name=lugar]').forEach(inp=>{const g=document.createElement('button');g.type='button';g.className='btn gpsbtn';g.textContent='📍 Engadir a miña posición';g.onclick=()=>gpsFill(inp);inp.insertAdjacentElement('afterend',g)})}
 function closeModal(){$('modalRoot').innerHTML=''}
 function modalField(label,name,value='',area=false){return `<label class="field wide">${safe(label)}${area?`<textarea name="${name}">${safe(value)}</textarea>`:`<input name="${name}" value="${safe(value)}">`}</label>`}
-function editVisit(i){const id=currentId,r=base(rows.get(id)),v=i<0?{}:r.visits[i];modal(`<h2>${i<0?'Nova visita':'Editar visita'}</h2><p class="muted">${safe(r.name)} · rexistro histórico</p><form id="editForm" class="fields">${modalField('Data (DD/MM/AAAA)','fecha',v.fecha)}${modalField('Lugar','lugar',v.lugar)}${modalField('Horas da máquina','horas',v.horas)}${modalField('Traballo e estado','traballo',v.traballo,true)}${modalField('Observacións','observacions',v.observacions,true)}<div class="flex wide"><button class="btn primary" type="submit">Gardar visita</button><button class="btn" type="button" data-close>Cancelar</button></div></form>`);$('editForm').onsubmit=async e=>{e.preventDefault();let vals=Object.fromEntries(new FormData(e.target)),vs=clone(r.visits||[]);if(i<0)vs.push(vals);else vs[i]=vals;try{await savePatch(id,{visits:vs,estadoVisita:'visitado'});closeModal()}catch(err){toast(err.message,true)}}}
+function editVisit(i){const id=currentId,r=base(rows.get(id)),v=i<0?{}:r.visits[i];modal(`<h2>${i<0?'Nova visita':'Editar visita'}</h2><p class="muted">${safe(r.name)} · rexistro histórico</p><form id="editForm" class="fields">${modalField('Data (DD/MM/AAAA)','fecha',v.fecha)}<label class="field wide">Horas do tractor (h)<span class="unit"><input name="horas" inputmode="decimal" autocomplete="off" placeholder="p. ex. 5807" value="${safe(v.horas||'')}"><em>h</em></span></label>${modalField('Lugar','lugar',v.lugar)}${modalField('Traballo e estado','traballo',v.traballo,true)}${modalField('Observacións','observacions',v.observacions,true)}<div class="flex wide"><button class="btn primary" type="submit">Gardar visita</button><button class="btn" type="button" data-close>Cancelar</button></div></form>`);$('editForm').onsubmit=async e=>{e.preventDefault();let vals=Object.fromEntries(new FormData(e.target)),vs=clone(r.visits||[]);if('horas' in vals)vals.horas=String(vals.horas).trim()===String(v.horas??'').trim()?(v.horas??''):horasNorm(vals.horas); /* v3.4: «5807» → «5807 h»; sen tocar se non cambia */if(i<0)vs.push(vals);else vs[i]=vals;try{await savePatch(id,{visits:vs,estadoVisita:'visitado'});closeModal()}catch(err){toast(err.message,true)}}}
 function editMachine(i){const id=currentId,r=base(rows.get(id)),m=i<0?{}:r.machines[i];modal(`<h2>${i<0?'Nova máquina':'Editar máquina'}</h2><form id="editForm" class="fields">${modalField('Marca','marca',m.marca)}${modalField('Modelo','modelo',m.modelo)}${modalField('Matrícula','matricula',m.matricula)}${modalField('Apeiro','apeiro',m.apeiro)}${modalField('Inicio','inicio',m.inicio)}${modalField('Fin','fin',m.fin)}<div class="flex wide"><button class="btn primary" type="submit">Gardar máquina</button><button class="btn" type="button" data-close>Cancelar</button></div></form>`);$('editForm').onsubmit=async e=>{e.preventDefault();let vals=Object.fromEntries(new FormData(e.target)),ms=clone(r.machines||[]);if(i<0)ms.push(vals);else ms[i]={...ms[i],...vals};try{await savePatch(id,{machines:ms});closeModal()}catch(err){toast(err.message,true)}}}
 function editContact(i){
  const id=currentId,r=base(rows.get(id)),old=i<0?{}:(r.contacts||[])[i]||{};
