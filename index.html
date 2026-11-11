@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Concellos Bieito"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Concellos Bieito</title>
-<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{--ink:#18342e;--muted:#64776e;--line:#dce6e0;--bg:#eef2f0;--panel:#fff;--brand:#123b32;--brand2:#146f59;--accent:#ffd400;--hdr:52px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:var(--bg)}
@@ -121,9 +121,15 @@ h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top
 }
 @media(max-width:520px){.brand b{display:none}.headerActions{gap:4px}}
 @media(prefers-reduced-motion:reduce){#sheet,.side{transition:none}}
+/* v2 · resumo de control */
+.ctrlSum{margin-top:8px;font-size:12px}.ctrlSum summary{cursor:pointer;font-weight:650;color:var(--muted);padding:2px 0}
+.ctrlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin-top:5px}
+.ctrlChip{display:flex;align-items:center;gap:6px;border:1px solid #e3ebe6;background:#f5f8f6;border-radius:8px;padding:5px 7px;font-size:11.5px;text-align:left}
+.ctrlChip{min-width:0}.ctrlChip b{margin-left:auto;flex:none}.ctrlChip .mark{flex:none}
+#filterXeral{flex:1}
 </style></head><body>
-<header><div class="brand"><img src="icons/icon-192.png" alt=""><b>Concellos Bieito</b><small>Seguimento de maquinaria cedida</small></div>
-<div class="headerActions"><span id="syncLabel" class="sync idle" role="status" aria-live="polite">Sen conectar</span><button class="btn ghost icon hidden" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos">↻</button><button class="btn ghost hidden hideM" id="exportBtn">Excel</button><button class="btn ghost hidden" id="logoutBtn">Saír</button></div></header>
+<header><div class="brand"><img src="icon-192.png" alt=""><b>Concellos Bieito</b><small>Seguimento e control · tractores cedidos</small></div>
+<div class="headerActions"><span id="syncLabel" class="sync idle" role="status" aria-live="polite">Sen conectar</span><button class="btn ghost icon hidden" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos">↻</button><button class="btn ghost hidden hideM" id="exportBtn">Excel</button><button class="btn ghost hidden hideM" id="csvBtn" title="Exportar a lista filtrada en CSV">CSV</button><button class="btn ghost hidden" id="logoutBtn">Saír</button></div></header>
 <main>
 <section id="login"><div class="loginTitle">Acceso ao panel</div><p class="muted">Os datos gárdanse nunha base privada en Supabase. Usa o acceso autorizado.</p><div class="fields"><label class="field wide">URL do proxecto Supabase<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="off" inputmode="url"></label><label class="field wide">Clave pública (sb_publishable_...)<input id="key" autocomplete="off" type="password"></label><label class="field wide">Correo de acceso<input id="email" type="email" autocomplete="username"></label><label class="field wide">Contrasinal<input id="password" type="password" autocomplete="current-password"></label></div><p><button id="loginBtn" class="btn primary big">Entrar na aplicación</button></p><p id="loginError" class="bad tiny"></p><p class="muted">A URL e a clave pública quedan gardadas neste navegador; o contrasinal non se garda nesta aplicación. Non uses claves secretas ou service_role.</p></section>
 <section id="app" class="hidden">
@@ -132,6 +138,7 @@ h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top
    <div class="kpis" id="kpis"></div>
    <input id="search" type="search" placeholder="Filtrar: concello, empresa, matrícula…" aria-label="Filtrar lista">
    <div class="row"><select id="province" aria-label="Provincia"><option value="">Todas as provincias</option><option>A CORUÑA</option><option>LUGO</option><option>OURENSE</option><option>PONTEVEDRA</option></select><select id="filter" aria-label="Estado"><option value="">Todos os estados</option><option value="avaria">Avaría</option><option value="visitado">Visitado</option><option value="fotos">Fotos recibidas</option><option value="contactado">Contactado</option><option value="pendente">Pendente</option><option value="sen-tractor">Sen tractor na relación</option><option value="so-apero">Só apero</option><option value="non-localizado">Tractor non localizado</option></select></div>
+   <div class="row" style="margin-top:6px"><select id="filterXeral" aria-label="Estado xeral (control)"><option value="">Estado xeral: todos</option><option>Sen info</option><option>Info non localizable</option><option>KMZ preparado</option><option>En campo</option><option>Campo pechado</option><option>Cargado na GDB</option><option>Sen tractor</option><option value="__sen">Sen definir</option></select></div>
   </div>
   <div id="list"></div>
  </aside>
@@ -147,7 +154,7 @@ h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top
    <div class="tabs" id="tabs" role="tablist"></div>
   </div>
   <div id="detail"><div class="empty muted">Selecciona un concello no mapa ou na lista para ver a súa ficha.</div></div>
-  <div class="actionbar hidden" id="actionbar"><button class="btn big" data-quick="visit"><span>＋</span>Visita</button><button class="btn big" data-quick="camera"><span>📷</span>Foto</button><button class="btn big" data-quick="doc"><span>📄</span>Documento</button><button class="btn big primary" data-quick="save"><span>✓</span>Gardar</button></div>
+  <div class="actionbar hidden" id="actionbar"><button class="btn big" data-quick="visit"><span>＋</span>Visita</button><!-- v2: Foto e Documento ocultos (MOSTRAR_DOCUMENTOS=false en app.js) --><button class="btn big hidden" data-quick="camera"><span>📷</span>Foto</button><button class="btn big hidden" data-quick="doc"><span>📄</span>Documento</button><button class="btn big primary" data-quick="save"><span>✓</span>Gardar</button></div>
  </section>
 </section>
 </main>

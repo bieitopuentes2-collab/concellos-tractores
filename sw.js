@@ -2,9 +2,9 @@
    Só garda na caché a carcasa pública da aplicación (HTML, JS, iconas, límites e librarías).
    NUNCA garda datos de Supabase, fotografías, PDF, URL asinadas nin teselas de mapa.
    Actualización controlada: ao publicar cambios, sube VERSION; a app ofrece «Actualizar». */
-const VERSION = 'cb-shell-2026-10-26-t02';
+const VERSION = 'cb-shell-2026-11-11-v2-1';  // v2: control + iconas na raíz
 const SHELL = ['./', './index.html', './app.js', './galicia.json', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
+  './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon-32.png'];
 const LIBS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
