@@ -127,6 +127,163 @@ h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top
 .ctrlChip{display:flex;align-items:center;gap:6px;border:1px solid #e3ebe6;background:#f5f8f6;border-radius:8px;padding:5px 7px;font-size:11.5px;text-align:left}
 .ctrlChip{min-width:0}.ctrlChip b{margin-left:auto;flex:none}.ctrlChip .mark{flex:none}
 #filterXeral{flex:1}
+/* ===================== v3 · deseño profesional ===================== */
+/* Escalas: tipografía (--fs-*), espazos (--s*), raios (--r*), sombras (--sh*) e cores. */
+:root{--ff:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+--fs-xs:12px;--fs-sm:13px;--fs-md:14px;--fs-lg:16px;--fs-xl:19px;--fs-2xl:22px;
+--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;
+--r-sm:8px;--r:10px;--r-lg:14px;
+--sh1:0 1px 2px rgba(16,40,32,.05),0 1px 3px rgba(16,40,32,.07);--sh2:0 6px 18px rgba(16,40,32,.12);
+--ink:#16302a;--ink2:#3d544b;--muted:#6a7d75;--line:#e1e8e4;--line2:#cbd8d0;--bg:#f2f5f3;--panel:#fff;--soft:#f7f9f8;
+--brand:#123b32;--brand2:#13705a;--brand3:#e6f2ec;--warn:#8a5d08;--warnbg:#fff6e0;--err:#a8322f;--errbg:#fdecea;--maxw:1680px;--padD:18px;
+font-family:var(--ff);font-size:var(--fs-md);line-height:1.45}
+/* Coa app aberta a páxina non se despraza (só os paneis); evita que a cabeceira desapareza no móbil */
+html:has(#app:not(.hidden)),body:has(#app:not(.hidden)){overflow:hidden}
+body{font-size:var(--fs-md);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h2{font-size:var(--fs-xl);letter-spacing:-.2px}
+/* Cabeceira aliñada co contedor centrado */
+header{padding-left:max(16px,calc((100vw - var(--maxw))/2 + 16px));padding-right:max(12px,calc((100vw - var(--maxw))/2 + 12px));box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.brand b{font-size:var(--fs-lg);font-weight:700}.brand small{font-size:var(--fs-xs);opacity:.75}
+.headerActions{gap:var(--s2)}.sync{font-size:var(--fs-xs);padding:6px 10px}
+/* Contedor centrado */
+#app{max-width:var(--maxw);margin:0 auto;grid-template-columns:330px minmax(0,1fr) 470px;border-inline:1px solid var(--line);background:var(--panel)}
+@media(min-width:1500px){#app{grid-template-columns:350px minmax(0,1fr) 520px}}
+@media(max-width:1280px) and (min-width:1001px){#app{grid-template-columns:300px minmax(0,1fr) 430px}}
+/* Botóns */
+.btn{border-radius:var(--r);min-height:40px;padding:8px 14px;font-weight:600;font-size:var(--fs-sm);border-color:var(--line2);color:var(--brand);box-shadow:var(--sh1);transition:background .15s,border-color .15s,box-shadow .15s}
+.btn:hover{background:var(--soft);border-color:#b2c7bb}.btn.primary{box-shadow:0 1px 2px rgba(19,112,90,.35)}.btn.primary:hover{background:#0f604d;border-color:#0f604d}
+.btn.ghost{box-shadow:none}.btn.ghost:hover{background:#ffffff26}.btn.icon{min-width:40px}
+.btn.big{min-height:48px}
+/* Formularios */
+.fields{gap:var(--s3) var(--s4)}
+.field{gap:6px;font-size:var(--fs-xs);font-weight:600;color:var(--ink2);letter-spacing:.1px;min-width:0}
+.field input,.field select,.field textarea,.side input,.side select,#mapSearch{min-height:42px;border-radius:var(--r);border-color:var(--line2);padding:9px 11px;font-size:var(--fs-md);font-weight:400;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.field input:focus,.field select:focus,.field textarea:focus,.side input:focus,.side select:focus,#mapSearch:focus{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(19,112,90,.15);outline:none}
+.field textarea{min-height:84px;line-height:1.45}
+.help{display:block;font-size:var(--fs-xs);color:var(--muted);font-weight:400;margin:6px 0 0;line-height:1.35}
+.unit{position:relative;display:flex;align-items:center}.unit input{padding-right:64px}.unit em{position:absolute;right:12px;font-style:normal;font-size:var(--fs-xs);font-weight:600;color:var(--muted);pointer-events:none}
+.field input.inv{border-color:var(--err);background:var(--errbg)}
+#login{border-radius:var(--r-lg);box-shadow:var(--sh2);padding:28px}.loginTitle{font-size:var(--fs-2xl)}
+/* Barra lateral: resumo + filtros fixos + lista */
+.side{overflow:hidden}
+.sideTop{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line);min-height:52px}
+.sideTop strong{font-size:var(--fs-lg)}.sideTop #mapHint{margin-left:auto;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sideScroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;background:var(--bg)}
+#kpis{padding:var(--s3) var(--s3) var(--s2);display:block}
+.side .sideHead{position:sticky;top:0;z-index:5;background:var(--panel);padding:var(--s3);border-top:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:0 6px 10px -10px rgba(0,0,0,.35);gap:var(--s2)}
+.side .sideHead .row{gap:var(--s2)}.side .sideHead select{min-width:0;flex:1;font-size:var(--fs-sm);padding-right:6px}
+.item{scroll-margin-top:190px}
+#list{overflow:visible;flex:none;background:var(--panel)}
+.sumCard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s3);box-shadow:var(--sh1)}
+.sumTitle{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 var(--s2)}
+.kmRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);margin-bottom:var(--s3)}
+.kmBox{background:var(--brand3);border-radius:var(--r);padding:8px 10px;min-width:0}
+.kmBox b{display:block;font-size:20px;line-height:1.15;font-weight:750;color:var(--brand);font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+.kmBox span{display:block;font-size:11px;color:var(--ink2);line-height:1.2}
+.ctrlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0}
+.ctrlChip{display:flex;align-items:center;gap:8px;min-height:40px;border-radius:var(--r);background:var(--soft);border:1px solid var(--line);font-size:var(--fs-xs);padding:6px 10px;color:var(--ink);text-align:left;min-width:0;transition:background .15s,border-color .15s}
+.ctrlChip:hover{border-color:#b2c7bb;background:#fff}.ctrlChip.on{border-color:var(--brand2);background:var(--brand3);box-shadow:inset 0 0 0 1px var(--brand2)}
+.ctrlChip .lbl{flex:1;min-width:0;line-height:1.2}.ctrlChip b{font-size:var(--fs-md);font-variant-numeric:tabular-nums;margin-left:auto}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.segSum{margin-top:var(--s2);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:0 var(--s3)}
+.segSum summary{cursor:pointer;list-style:none;min-height:42px;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.segSum summary::-webkit-details-marker{display:none}.segSum summary::after{content:'▾';font-size:13px;transition:transform .15s}.segSum[open] summary::after{transform:rotate(180deg)}
+.segSum .kpis{padding-bottom:var(--s3)}
+.kpis{gap:6px}.kpi{background:var(--soft);border-color:var(--line);border-radius:var(--r);padding:8px 10px}.kpi b{font-size:18px;font-variant-numeric:tabular-nums}.kpi span{font-size:11px}
+/* Lista de concellos */
+.item{padding:10px 14px 10px 12px;min-height:62px;border-left-width:4px;border-bottom:1px solid var(--line);gap:var(--s3);transition:background .12s}
+.item:hover{background:#f3f8f5}.item.active{background:var(--brand3);box-shadow:inset 0 0 0 2px rgba(19,112,90,.35)}
+.itemMain{display:flex;flex-direction:column;gap:2px;min-width:0}
+.itemName{font-size:var(--fs-md);font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itemSub{font-size:var(--fs-xs);color:var(--muted)}
+.itemNums{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}.itemNums b{color:var(--ink);font-weight:700}
+.badge{--c:#a3adab;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--c) 14%,#fff);border:1px solid color-mix(in srgb,var(--c) 42%,#fff);color:var(--ink);flex:none;line-height:1.3}
+.badge::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+/* Ficha */
+.sheetHead{padding:14px var(--padD) 0;border-bottom:1px solid var(--line)}
+.sheetTitle h2{font-size:var(--fs-xl);font-weight:750}
+#detailMeta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:var(--fs-xs);margin-top:6px}
+#detailMeta>span.sep+span.sep::before{content:'·';margin-right:10px;color:#a9b8b0}
+.tabs{gap:2px;margin-top:6px;padding-top:4px}
+.tab{min-height:44px;padding:10px 12px;border-radius:0;font-size:var(--fs-sm);background:transparent}
+.tab:hover{color:var(--brand)}.tab.active{background:transparent;color:var(--brand)}
+#detail{padding:var(--s4) var(--padD) var(--s6);background:var(--bg)}
+h3{font-size:var(--fs-md);font-weight:700}
+.block{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s4);margin-top:var(--s3);box-shadow:var(--sh1)}
+.block>h3:first-child,.block .paneHead h3{margin-top:0}
+.entry{background:var(--panel);border-color:var(--line);border-radius:var(--r);box-shadow:var(--sh1)}
+.entry .btn{min-height:36px;margin-top:6px}
+.actionbar{gap:var(--s2);padding:10px var(--s3) calc(10px + var(--sab));box-shadow:0 -4px 12px -8px rgba(0,0,0,.18)}
+.pill{font-weight:600}
+/* Control: tarxetas, lectura / edición */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s4);box-shadow:var(--sh1);margin:0 0 var(--s3);min-width:0}
+fieldset.card{margin:0 0 var(--s3)}
+fieldset.card>legend{float:left;width:100%;padding:0}
+fieldset.card>legend+*{clear:both}
+.card h3,fieldset.card>legend{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--brand2);margin:0 0 var(--s3)}
+.estadoCard{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);border-left:5px solid var(--c)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+.estadoVal{display:flex;align-items:center;gap:8px;font-size:var(--fs-lg);font-weight:700;margin-top:2px}.estadoVal .dot{width:12px;height:12px;background:var(--c)}
+.datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:0}
+.dato{min-width:0}.dato.w{grid-column:1/-1}.dato dt{font-size:11.5px;color:var(--muted);font-weight:600}
+.dato dd{margin:2px 0 0;font-size:var(--fs-md);font-weight:600;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.dato dd small{color:var(--muted);font-weight:500}
+.nd{color:#a3b2aa;font-weight:400}
+.sn{display:inline-block;padding:2px 10px;border-radius:999px;font-size:var(--fs-xs);font-weight:700}.sn.si{background:#e1f3ea;color:#0f664d}.sn.non{background:#edf1ef;color:#4b5d55}
+.prog{margin-top:var(--s3)}.prog .bar{height:8px;background:#f4dedc;border-radius:99px;overflow:hidden}.prog .bar i{display:block;height:100%;background:#1a9a72;border-radius:99px}
+.prog small{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:4px}
+.ctrlPane .ctrlForm{display:none}.ctrlPane.editing .ctrlForm{display:block}.ctrlPane.editing .ctrlRead{display:none}
+.avisos{display:grid;gap:6px;margin:0 0 var(--s3)}.avisos:empty{display:none}
+.aviso{font-size:var(--fs-sm);padding:8px 12px;border-radius:var(--r);background:var(--warnbg);color:var(--warn);border:1px solid #f0dca8}.aviso.erro{background:var(--errbg);color:var(--err);border-color:#f2c6c2}
+.ctrlBar{position:sticky;bottom:calc(-1 * var(--s6));z-index:4;margin:0 calc(-1 * var(--padD)) calc(-1 * var(--s6));padding:10px var(--padD) calc(10px + var(--sab));background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);box-shadow:0 -6px 14px -10px rgba(0,0,0,.25)}
+.ctrlBarRow{display:flex;align-items:center;gap:var(--s2)}.ctrlBar .avisos{margin:0 0 10px}
+/* En modo edición a barra propia (Cancelar/Gardar) substitúe á barra de accións inferior */
+#sheet:has(.ctrlPane.editing.on) .actionbar{display:none!important}
+.ctrlBar .flag{margin-right:auto;font-size:var(--fs-sm);color:var(--muted);display:flex;align-items:center;gap:6px}
+.ctrlBar .flag.d{display:none;color:#a2650b;font-weight:600}body.cb-dirty .ctrlBar .flag.d{display:flex}body.cb-dirty .ctrlBar .flag.c{display:none}
+.ctrlNote{font-size:var(--fs-sm);color:var(--muted);margin:var(--s2) 2px 0}
+/* Acta: dúas marcas (ticks) */
+.tick{display:flex;align-items:flex-start;gap:12px;min-height:48px;padding:10px 12px;border:1px solid var(--line2);border-radius:var(--r);background:var(--soft);cursor:pointer;font-size:var(--fs-sm);color:var(--ink);transition:border-color .15s,background .15s}
+.tick:hover{border-color:#b2c7bb}.tick:has(input:checked){background:var(--brand3);border-color:var(--brand2)}
+.tick input{width:22px;height:22px;margin:0;accent-color:var(--brand2);flex:none}.tick b{display:block;font-weight:600}.tick .help{margin-top:2px}
+.actaRow{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:var(--s3);padding-top:var(--s2);border-top:1px solid var(--line);font-size:var(--fs-xs);color:var(--ink2)}.actaRow b{color:var(--ink);font-size:var(--fs-sm)}
+.actaIcos{display:inline-flex;gap:3px;margin-left:4px}.actaIcos i{font-style:normal;font-size:11px;background:var(--brand3);color:var(--brand);border-radius:6px;padding:0 4px}
+/* Notas con data (liña de tempo) */
+.cardHead{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}.cardHead h3{margin:0}
+.count{min-width:24px;height:24px;padding:0 8px;border-radius:99px;background:var(--brand3);color:var(--brand);font-size:var(--fs-xs);font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.noteAdd{background:var(--soft);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3);display:grid;gap:var(--s3)}
+.noteRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+.noteAdd textarea{min-height:68px}
+.check{display:flex;align-items:center;gap:10px;font-size:var(--fs-sm);color:var(--ink2);min-height:40px;cursor:pointer}.check input{width:20px;height:20px;accent-color:var(--brand2);flex:none}
+.noteFoot{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);flex-wrap:wrap}.noteFoot .btn{margin-left:auto}
+.hint{font-size:var(--fs-xs);color:var(--err);font-weight:600}
+.timeline{list-style:none;margin:var(--s4) 0 0 6px;padding:0 0 0 16px;border-left:2px solid var(--line);display:grid;gap:var(--s3)}
+.timeline li{position:relative}
+.timeline li::before{content:'';position:absolute;left:-23px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--brand2);box-shadow:0 0 0 3px var(--panel)}
+.timeline li.undated::before{background:#b9c6bf}.timeline li.emptyTl::before{display:none}
+.tlDate{font-size:var(--fs-xs);font-weight:700;color:var(--brand2);display:flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}.undated .tlDate{color:var(--muted);font-weight:600}
+.tag{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:#e7eefa;color:#2a528f;text-transform:uppercase;letter-spacing:.3px}
+.tlText{font-size:var(--fs-sm);color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:2px;line-height:1.45}
+/* Tableta e móbil */
+@media(max-width:1000px){
+ #app{border:0}
+ :root{--padD:14px}
+ .sideTop{padding-top:10px}
+ .sheetHead{padding:8px var(--padD) 0}
+ .field input,.field select,.field textarea,.side input,.side select,#mapSearch{font-size:16px;min-height:44px}
+ .side .sideHead select{font-size:16px}
+ .btn{min-height:42px}
+}
+@media(max-width:1000px) and (min-width:521px){.fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fields .wide{grid-column:1/-1}}
+@media(max-width:480px){
+ .kmBox b{font-size:18px}
+ .datos{gap:10px 12px}
+ .estadoCard{flex-wrap:wrap}.estadoCard .btn{width:100%}
+ .ctrlBarRow{display:flex;align-items:center;gap:var(--s2)}.ctrlBar .avisos{margin:0 0 10px}
+/* En modo edición a barra propia (Cancelar/Gardar) substitúe á barra de accións inferior */
+#sheet:has(.ctrlPane.editing.on) .actionbar{display:none!important}
+.ctrlBar .flag{font-size:var(--fs-xs)}
+}
+@media(max-width:360px){.datos,.noteRow,.ctrlGrid{grid-template-columns:1fr}}
 </style></head><body>
 <header><div class="brand"><img src="icon-192.png" alt=""><b>Concellos Bieito</b><small>Seguimento e control · tractores cedidos</small></div>
 <div class="headerActions"><span id="syncLabel" class="sync idle" role="status" aria-live="polite">Sen conectar</span><button class="btn ghost icon hidden" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos">↻</button><button class="btn ghost hidden hideM" id="exportBtn">Excel</button><button class="btn ghost hidden hideM" id="csvBtn" title="Exportar a lista filtrada en CSV">CSV</button><button class="btn ghost hidden" id="logoutBtn">Saír</button></div></header>
@@ -134,13 +291,15 @@ h3{font-size:15px;margin:16px 0 8px}.pane>h3:first-child,.paneHead h3{margin-top
 <section id="login"><div class="loginTitle">Acceso ao panel</div><p class="muted">Os datos gárdanse nunha base privada en Supabase. Usa o acceso autorizado.</p><div class="fields"><label class="field wide">URL do proxecto Supabase<input id="url" placeholder="https://xxxx.supabase.co" autocomplete="off" inputmode="url"></label><label class="field wide">Clave pública (sb_publishable_...)<input id="key" autocomplete="off" type="password"></label><label class="field wide">Correo de acceso<input id="email" type="email" autocomplete="username"></label><label class="field wide">Contrasinal<input id="password" type="password" autocomplete="current-password"></label></div><p><button id="loginBtn" class="btn primary big">Entrar na aplicación</button></p><p id="loginError" class="bad tiny"></p><p class="muted">A URL e a clave pública quedan gardadas neste navegador; o contrasinal non se garda nesta aplicación. Non uses claves secretas ou service_role.</p></section>
 <section id="app" class="hidden">
  <aside class="side" id="sidebar" aria-label="Concellos">
-  <div class="sideHead"><div class="flex" style="justify-content:space-between"><strong>Concellos</strong><span class="muted tiny" id="mapHint"></span><button class="btn icon" id="sideClose" aria-label="Pechar lista" style="display:none">✕</button></div>
-   <div class="kpis" id="kpis"></div>
-   <input id="search" type="search" placeholder="Filtrar: concello, empresa, matrícula…" aria-label="Filtrar lista">
+  <div class="sideTop"><strong>Concellos</strong><span class="muted tiny" id="mapHint"></span><button class="btn icon" id="sideClose" aria-label="Pechar lista" style="display:none">✕</button></div>
+  <div class="sideScroll">
+  <div id="kpis" aria-label="Resumo"></div>
+  <div class="sideHead"><input id="search" type="search" placeholder="Buscar concello, empresa, matrícula…" aria-label="Filtrar lista">
    <div class="row"><select id="province" aria-label="Provincia"><option value="">Todas as provincias</option><option>A CORUÑA</option><option>LUGO</option><option>OURENSE</option><option>PONTEVEDRA</option></select><select id="filter" aria-label="Estado"><option value="">Todos os estados</option><option value="avaria">Avaría</option><option value="visitado">Visitado</option><option value="fotos">Fotos recibidas</option><option value="contactado">Contactado</option><option value="pendente">Pendente</option><option value="sen-tractor">Sen tractor na relación</option><option value="so-apero">Só apero</option><option value="non-localizado">Tractor non localizado</option></select></div>
-   <div class="row" style="margin-top:6px"><select id="filterXeral" aria-label="Estado xeral (control)"><option value="">Estado xeral: todos</option><option>Sen info</option><option>Info non localizable</option><option>KMZ preparado</option><option>En campo</option><option>Campo pechado</option><option>Cargado na GDB</option><option>Sen tractor</option><option value="__sen">Sen definir</option></select></div>
+   <div class="row"><select id="filterXeral" aria-label="Estado xeral (control)"><option value="">Estado xeral: todos</option><option>Sen info</option><option>Info non localizable</option><option>KMZ preparado</option><option>En campo</option><option>Campo pechado</option><option>Cargado na GDB</option><option>Sen tractor</option><option value="__sen">Sen definir</option></select></div>
   </div>
   <div id="list"></div>
+  </div>
  </aside>
  <section id="mapWrap" aria-label="Mapa">
   <div id="map"></div>
